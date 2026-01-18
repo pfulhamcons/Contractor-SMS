@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+    
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +20,7 @@
 </head>
 <body>
     <div id="root"></div>
-    
+   
     <script type="text/babel">
         const { useState } = React;
 
@@ -33,6 +34,8 @@
         
         // Your company/plant name
         const COMPANY_NAME = 'OSI West Chicago';
+
+const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxOZzGfnmSbR8Sn9ToMqlGS6RZQYJMsj45LnjM0Cs_1i5K1dxEzlIPwEAY67Qr7tx2v/exec';
         
         // ============================================
 
@@ -97,52 +100,50 @@
             { name: 'PPE Requirements', file: 'documents/ppe-requirements.pdf', category: 'Safety' },
             { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
           ];
+const handleSignIn = async () => {
+  if (!agreementSigned) {
+    alert('Please sign the safety agreement before checking in.');
+    setActiveTab('agreement');
+    return;
+  }
 
-          const handleSignIn = () => {
-            if (!agreementSigned) {
-              alert('Please sign the safety agreement before checking in.');
-              setActiveTab('agreement');
-              return;
-            }
-            
-            if (!signInData.name || !signInData.company || !signInData.purpose) {
-              alert('Please fill in all required fields');
-              return;
-            }
-            
-            const newVisitor = {
-              ...signInData,
-              checkInTime: new Date().toLocaleTimeString(),
-              id: Date.now()
-            };
-            
-            setVisitors([newVisitor, ...visitors]);
-            
-            alert(`Check-in successful!\n\nSee Documents for Company Programs:\n${signInData.name} from ${signInData.company} has arrived.`);
-            
-            setSignInData({
-              name: '',
-              company: '',
-              purpose: '',
-              date: new Date().toISOString().split('T')[0]
-            });
-            setAgreementSigned(false);
-            setSignature('');
-          };
+  if (!signInData.name || !signInData.company || !signInData.purpose) {
+    alert('Please fill in all required fields');
+    return;
+  }
 
-          const handleAgreementSign = () => {
-            if (signature.trim().length < 3) {
-              alert('Please enter your full name as signature');
-              return;
-            }
-            setAgreementSigned(true);
-            alert('Agreement signed successfully! You can now check in.');
-            setActiveTab('signin');
-          };
+  const newVisitor = {
+    ...signInData,
+    checkInTime: new Date().toLocaleTimeString(),
+    signature: signature
+  };
 
-          const handleDownload = (file) => {
-            window.open(file, '_blank');
-          };
+  try {
+    await fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      body: JSON.stringify(newVisitor),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
+
+    setSignInData({
+      name: '',
+      company: '',
+      purpose: '',
+      date: new Date().toISOString().split('T')[0]
+    });
+
+    setAgreementSigned(false);
+    setSignature('');
+  } catch (error) {
+    alert('Error logging check-in. Please notify staff.');
+    console.error(error);
+  }
+};
+
 
           return (
             <div className="min-h-screen bg-gray-50">
