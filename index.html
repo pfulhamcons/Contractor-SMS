@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contractor Safety Management System</title>
+    <title>Contractor & Visitor Safety Management System</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -32,7 +32,7 @@
         const LOGO_FILE = 'Osi-group-logo-vector.png';
         
         // Your company/plant name
-        const COMPANY_NAME = 'Manufacturing Plant';
+        const COMPANY_NAME = 'OSI West Chicago';
         
         // ============================================
 
@@ -151,12 +151,12 @@
                 <div className="max-w-6xl mx-auto flex items-center">
                   {/* Logo - will hide if image fails to load */}
                   <img 
-                    src={LOGO_FILE} 
+                    src={Osi-group-logo-vector.png} 
                     alt="Company Logo" 
                     className="h-16 w-auto mr-4 object-contain"
                     onError={(e) => {
                       e.target.style.display='none';
-                      console.log('Logo not found. Upload your logo as:', LOGO_FILE);
+                      console.log('Logo not found. Upload your logo as:', Osi-group-logo-vector.png);
                     }}
                   />
                   <div>
