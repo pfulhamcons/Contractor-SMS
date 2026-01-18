@@ -100,16 +100,18 @@ const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxOZzGfnmSbR8S
             { name: 'PPE Requirements', file: 'documents/ppe-requirements.pdf', category: 'Safety' },
             { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
           ];
+            
             const handleAgreementSign = () => {
-  if (signature.trim().length < 3) {
-    alert('Please enter your full name as signature');
-    return;
+              if (signature.trim().length < 3) {
+                alert('Please enter your full name as signature');
+                return;
   }
 
-  setAgreementSigned(true);
-  alert('Agreement signed successfully! You can now check in.');
-  setActiveTab('signin');
+              setAgreementSigned(true);
+              alert('Agreement signed successfully! You can now check in.');
+              setActiveTab('signin');
 };
+
 
 const handleSignIn = async () => {
   if (!agreementSigned) {
