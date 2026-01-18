@@ -32,7 +32,7 @@
         const LOGO_FILE = 'osi-group-logo-vector.png';
         
         // Your company/plant name
-        const COMPANY_NAME = 'Manufacturing Plant';
+        const COMPANY_NAME = 'OSI West Chicago';
         
         // ============================================
 
@@ -92,7 +92,7 @@
           const [visitors, setVisitors] = useState([]);
 
           const documents = [
-            { name: 'Holiday Schedule 2026', file: 'documents/2026-Holiday-Schedule.pdf', category: 'Safety' },
+            { name: 'Holiday Schedule 2026', file: 'documents/2026 Holiday Schedule.pdf', category: 'Safety' },
             { name: 'Emergency Procedures', file: 'documents/emergency-procedures.pdf', category: 'Emergency' },
             { name: 'PPE Requirements', file: 'documents/ppe-requirements.pdf', category: 'Safety' },
             { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
@@ -161,7 +161,7 @@
                   />
                   <div>
                     <h1 className="text-3xl font-bold">{COMPANY_NAME}</h1>
-                    <p className="burgundy-light mt-1">Contractor Safety Management System</p>
+                    <p className="burgundy-light mt-1">Contractor & Visitor SMS</p>
                   </div>
                 </div>
               </div>
@@ -222,7 +222,7 @@
                 {/* Check In Form */}
                 {activeTab === 'signin' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contractor Check-In</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Check-In</h2>
                     
                     {agreementSigned ? (
                       <div className="bg-green-50 border border-green-200 rounded p-4 mb-6">
@@ -298,7 +298,7 @@
                 {/* Safety Agreement */}
                 {activeTab === 'agreement' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contractor Safety Agreement</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Safety Agreement</h2>
                     
                     <div className="bg-gray-50 border border-gray-200 rounded p-6 mb-6 max-h-96 overflow-y-auto">
                       <h3 className="font-bold text-lg mb-4">Safety Rules and Regulations</h3>
@@ -312,7 +312,7 @@
                           <li>Report any unsafe conditions or incidents immediately</li>
                           <li>Follow all posted safety signs and warnings</li>
                           <li>Not operate any equipment without proper authorization</li>
-                          <li>Attend all required safety briefings</li>
+                          <li>Comply with all food safety rules and regulations of the facility</li>
                           <li>Follow emergency evacuation procedures if required</li>
                           <li>Maintain a clean and safe work area</li>
                           <li>Not use drugs or alcohol on facility premises</li>
@@ -393,7 +393,7 @@
                         <strong>Note:</strong> Make sure your PDF files are uploaded to the "documents" folder with these exact filenames:
                       </p>
                       <ul className="text-xs burgundy-text mt-2 ml-4 list-disc">
-                        <li>2026-Holiday-Schedule.pdf</li>
+                        <li>2026 Holiday Schedule.pdf</li>
                         <li>emergency-procedures.pdf</li>
                         <li>ppe-requirements.pdf</li>
                         <li>contractor-handbook.pdf</li>
