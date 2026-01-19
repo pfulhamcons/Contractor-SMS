@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contractor Safety Management System</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -22,19 +22,11 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // ============================================
-        // CONFIGURATION - CHANGE THESE VALUES
-        // ============================================
-        
+        // CONFIGURATION
         const LOGO_FILE = 'logo.png';
         const COMPANY_NAME = 'Manufacturing Plant';
-        
-        // IMPORTANT: Paste your Google Apps Script Web App URL here
-        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzUa8rWLSj2c9lD5kzcT8LIic-gVI-6VIKGS9nRsK8p-IHnP_H9sHgvCpqqDn8nWXOh/exec';
-        
-        // ============================================
 
-        // Icons (same as before)
+        // Icons
         const UserCheckIcon = () => (
           <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -88,7 +80,6 @@
           const [agreementSigned, setAgreementSigned] = useState(false);
           const [signature, setSignature] = useState('');
           const [visitors, setVisitors] = useState([]);
-          const [isSaving, setIsSaving] = useState(false);
 
           const documents = [
             { name: 'Safety Guidelines 2024', file: 'documents/safety-guidelines.pdf', category: 'Safety' },
@@ -97,26 +88,7 @@
             { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
           ];
 
-          // Function to save to Google Sheets
-          const saveToGoogleSheets = async (data) => {
-            try {
-              const response = await fetch(GOOGLE_SHEET_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-              });
-              
-              return true; // no-cors mode doesn't return response, so assume success
-            } catch (error) {
-              console.error('Error saving to Google Sheets:', error);
-              return false;
-            }
-          };
-
-          const handleSignIn = async () => {
+          const handleSignIn = () => {
             if (!agreementSigned) {
               alert('Please sign the safety agreement before checking in.');
               setActiveTab('agreement');
@@ -128,28 +100,15 @@
               return;
             }
             
-            const checkInTime = new Date().toLocaleTimeString();
             const newVisitor = {
               ...signInData,
-              checkInTime: checkInTime,
+              checkInTime: new Date().toLocaleTimeString(),
               id: Date.now()
             };
             
             setVisitors([newVisitor, ...visitors]);
-            setIsSaving(true);
             
-            // Save to Google Sheets
-            const saved = await saveToGoogleSheets({
-              name: signInData.name,
-              company: signInData.company,
-              purpose: signInData.purpose,
-              date: signInData.date,
-              checkInTime: checkInTime
-            });
-            
-            setIsSaving(false);
-            
-            alert(`Check-in successful!\n\nData saved to Google Sheets.\n${signInData.name} from ${signInData.company} has been logged.`);
+            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
             
             setSignInData({
               name: '',
@@ -194,10 +153,10 @@
 
               <div className="bg-white shadow">
                 <div className="max-w-6xl mx-auto px-4">
-                  <div className="flex space-x-1">
+                  <div className="flex flex-wrap">
                     <button
                       onClick={() => setActiveTab('signin')}
-                      className={`px-6 py-4 font-medium transition-colors ${
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                         activeTab === 'signin' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
@@ -205,234 +164,12 @@
                     </button>
                     <button
                       onClick={() => setActiveTab('agreement')}
-                      className={`px-6 py-4 font-medium transition-colors ${
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                         activeTab === 'agreement' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
-                      <CheckCircleIcon />Safety Agreement
+                      <CheckCircleIcon />Agreement
                     </button>
                     <button
                       onClick={() => setActiveTab('documents')}
-                      className={`px-6 py-4 font-medium transition-colors ${
-                        activeTab === 'documents' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      <FileTextIcon />Documents
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('visitors')}
-                      className={`px-6 py-4 font-medium transition-colors ${
-                        activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Current Visitors
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="max-w-6xl mx-auto px-4 py-8">
-                {activeTab === 'signin' && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contractor Check-In</h2>
-                    
-                    {agreementSigned ? (
-                      <div className="bg-green-50 border border-green-200 rounded p-4 mb-6">
-                        <CheckCircleIcon />
-                        <span className="text-green-800 font-medium">Safety agreement signed</span>
-                      </div>
-                    ) : (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-6">
-                        <AlertTriangleIcon />
-                        <span className="text-yellow-800">You must sign the safety agreement before checking in</span>
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                        <input
-                          type="text"
-                          value={signInData.name}
-                          onChange={(e) => setSignInData({...signInData, name: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
-                        <input
-                          type="text"
-                          value={signInData.company}
-                          onChange={(e) => setSignInData({...signInData, company: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Purpose of Visit *</label>
-                        <textarea
-                          value={signInData.purpose}
-                          onChange={(e) => setSignInData({...signInData, purpose: e.target.value})}
-                          rows="3"
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input
-                          type="date"
-                          value={signInData.date}
-                          onChange={(e) => setSignInData({...signInData, date: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleSignIn}
-                        disabled={isSaving}
-                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50"
-                      >
-                        {isSaving ? 'Saving...' : 'Check In'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'agreement' && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contractor Safety Agreement</h2>
-                    
-                    <div className="bg-gray-50 border border-gray-200 rounded p-6 mb-6 max-h-96 overflow-y-auto">
-                      <h3 className="font-bold text-lg mb-4">Safety Rules and Regulations</h3>
-                      
-                      <div className="space-y-4 text-sm text-gray-700">
-                        <p className="font-medium">By signing this agreement, I acknowledge and agree to:</p>
-                        
-                        <ol className="list-decimal list-inside space-y-2 ml-4">
-                          <li>Comply with all safety rules and regulations of the facility</li>
-                          <li>Wear appropriate Personal Protective Equipment (PPE) at all times</li>
-                          <li>Report any unsafe conditions or incidents immediately</li>
-                          <li>Follow all posted safety signs and warnings</li>
-                          <li>Not operate any equipment without proper authorization</li>
-                          <li>Attend all required safety briefings</li>
-                          <li>Follow emergency evacuation procedures if required</li>
-                          <li>Maintain a clean and safe work area</li>
-                          <li>Not use drugs or alcohol on facility premises</li>
-                          <li>Follow all environmental and waste disposal procedures</li>
-                        </ol>
-
-                        <p className="font-medium mt-6">I understand that:</p>
-                        <ul className="list-disc list-inside space-y-2 ml-4">
-                          <li>Failure to comply may result in removal from the facility</li>
-                          <li>I am responsible for my own safety and the safety of others</li>
-                          <li>I must report any injuries or near-misses immediately</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    {agreementSigned ? (
-                      <div className="bg-green-50 border border-green-200 rounded p-6 text-center">
-                        <CheckIcon />
-                        <p className="text-green-800 font-medium text-lg">Agreement Signed</p>
-                        <p className="text-green-700 text-sm mt-2">Signed by: {signature}</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Type your full name to sign *
-                          </label>
-                          <input
-                            type="text"
-                            value={signature}
-                            onChange={(e) => setSignature(e.target.value)}
-                            placeholder="Enter your full name"
-                            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">This constitutes your electronic signature</p>
-                        </div>
-
-                        <button
-                          onClick={handleAgreementSign}
-                          className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors"
-                        >
-                          Sign Agreement
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'documents' && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Safety Documents</h2>
-                    
-                    <div className="grid gap-4">
-                      {documents.map((doc, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          <div className="flex items-center">
-                            <FileIcon />
-                            <div>
-                              <h3 className="font-medium text-gray-900">{doc.name}</h3>
-                              <p className="text-sm text-gray-500">{doc.category}</p>
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => handleDownload(doc.file)}
-                            className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors"
-                          >
-                            Download PDF
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded">
-                      <p className="text-sm burgundy-text">
-                        <strong>Note:</strong> Make sure your PDF files are in the "documents" folder
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'visitors' && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Current Visitors</h2>
-                    
-                    {visitors.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
-                        <UserIcon />
-                        <p>No contractors currently checked in</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {visitors.map((visitor) => (
-                          <div key={visitor.id} className="p-4 border border-gray-200 rounded-lg">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-medium text-gray-900">{visitor.name}</h3>
-                                <p className="text-sm text-gray-600">{visitor.company}</p>
-                                <p className="text-sm text-gray-500 mt-1">{visitor.purpose}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">{visitor.checkInTime}</p>
-                                <p className="text-sm text-gray-500">{visitor.date}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        }
-
-        ReactDOM.render(<ContractorSafetySystem />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm m
