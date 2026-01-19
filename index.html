@@ -82,13 +82,12 @@
           const [visitors, setVisitors] = useState([]);
 
           const documents = [
-            { name: 'Holiday Schedule', file: 'documents/2026 Holiday Schedule.pdf', category: 'Safety' },
             { name: 'Visitor/Contractor GMP Agreement', file: 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf', category: 'Safety' },
           ];
 
           const handleSignIn = () => {
             if (!agreementSigned) {
-              alert('Please sign the safety agreement before checking in.');
+              alert('Please sign the safety agreement and read documents before checking in.');
               setActiveTab('agreement');
               return;
             }
