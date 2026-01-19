@@ -30,7 +30,7 @@
         const COMPANY_NAME = 'Manufacturing Plant';
         
         // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxR12dgSud-yzG975Qgvchh5Psvtrfz13XYoNGb55pBIPRE9xmws-0jkQzJcGPzew3i/exec';
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzGVH9cH0KmR7YvPXxJKkqKHx1tKqxQR3wE_qrjmxH_lJxNvBHJ8wVKkPkbQJ6s5qPT/exec';
         
         // ============================================
 
@@ -97,24 +97,34 @@
             { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
           ];
 
-          // Function to save to Google Sheets
-          const saveToGoogleSheets = async (data) => {
-            try {
-              const response = await fetch(GOOGLE_SHEET_URL, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-              });
-              
-              const result = await response.json();
-              return result.status === 'success';
-            } catch (error) {
-              console.error('Error saving to Google Sheets:', error);
-              return false;
-            }
-          };
+         // Function to save to Google Sheets
+const saveToGoogleSheets = async (data) => {
+  try {
+    console.log('Attempting to save to Google Sheets...');
+    console.log('URL:', GOOGLE_SHEET_URL);
+    console.log('Data:', data);
+    
+    const response = await fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      redirect: 'follow'
+    });
+    
+    console.log('Response status:', response.status);
+    
+    const result = await response.json();
+    console.log('Response data:', result);
+    
+    return result.status === 'success';
+  } catch (error) {
+    console.error('Detailed error:', error);
+    alert('Error details: ' + error.message);
+    return false;
+  }
+};
 
           const handleSignIn = async () => {
             if (!agreementSigned) {
