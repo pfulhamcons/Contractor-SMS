@@ -132,13 +132,21 @@ const handleSignIn = async () => {
   };
 
   try {
-    await fetch(GOOGLE_SHEET_URL, {
-      method: 'POST',
-      body: JSON.stringify(newVisitor),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+const response = await fetch(GOOGLE_SHEET_URL, {
+  method: 'POST',
+  body: JSON.stringify(newVisitor),
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+const result = await response.text();
+console.log('Apps Script response:', result);
+
+if (!response.ok) {
+  throw new Error(result);
+}
+
 
     alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
 
