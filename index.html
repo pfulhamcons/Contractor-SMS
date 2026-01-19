@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contractor & Visitor Safety Management System</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contractor & Visitor Safety Management System</title>
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <style>
-        .burgundy-bg { background-color: #800020; }
-        .burgundy-text { color: #800020; }
-        .burgundy-border { border-color: #800020; }
-        .burgundy-hover:hover { background-color: #660019; }
-        .burgundy-light { color: #ffcccb; }
-    </style>
+  <style>
+    .burgundy-bg { background-color: #800020; }
+    .burgundy-text { color: #800020; }
+    .burgundy-border { border-color: #800020; }
+    .burgundy-hover:hover { background-color: #660019; }
+    .burgundy-light { color: #ffcccb; }
+  </style>
 </head>
 
 <body>
@@ -28,59 +28,15 @@ const { useState } = React;
 /* ================= CONFIG ================= */
 const LOGO_FILE = 'osi-group-logo-vector.png';
 const COMPANY_NAME = 'West Chicago';
-
-/* 🔴 ADD YOUR GOOGLE SCRIPT URL HERE */
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxtdWGq0BiMJqsuhdsgEfWYhuGbU8zhW-lzMiqwVzGvLxcFsGg_BB0tZ7jZeST2A9zQ/exec";
 
 /* ================= ICONS ================= */
-const UserCheckIcon = () => (
-  <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
-const CheckCircleIcon = () => (
-  <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const FileTextIcon = () => (
-  <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
-
-const AlertTriangleIcon = () => (
-  <svg className="inline w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-  </svg>
-);
-
-const FileIcon = () => (
-  <svg className="w-8 h-8 mr-4 burgundy-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-  </svg>
-);
-
-const UserIcon = () => (
-  <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg className="inline w-12 h-12 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
+const UserCheckIcon = () => (<span>👤</span>);
+const CheckCircleIcon = () => (<span>✔️</span>);
+const FileTextIcon = () => (<span>📄</span>);
+const AlertTriangleIcon = () => (<span>⚠️</span>);
+const UserIcon = () => (<span>👥</span>);
+const CheckIcon = () => (<span>✅</span>);
 
 /* ================= APP ================= */
 function ContractorSafetySystem() {
@@ -96,10 +52,13 @@ function ContractorSafetySystem() {
   const [visitors, setVisitors] = useState([]);
 
   const documents = [
-    { name: 'Visitor/Contractor GMP Agreement', file: 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf', category: 'Safety' }
+    {
+      name: 'Visitor / Contractor GMP Agreement',
+      file: 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf'
+    }
   ];
 
-  /* ========= UPDATED CHECK-IN ========= */
+  /* ========= GOOGLE SHEETS CHECK-IN ========= */
   const handleSignIn = async () => {
     if (!agreementSigned) {
       alert('Please sign the safety agreement first.');
@@ -113,10 +72,7 @@ function ContractorSafetySystem() {
     }
 
     const payload = {
-      name: signInData.name,
-      company: signInData.company,
-      purpose: signInData.purpose,
-      date: signInData.date,
+      ...signInData,
       checkInTime: new Date().toLocaleTimeString(),
       agreementSigned,
       signature
@@ -130,8 +86,7 @@ function ContractorSafetySystem() {
       });
 
       setVisitors([{ ...payload, id: Date.now() }, ...visitors]);
-
-      alert(`Check-in successful!\n${payload.name} logged.`);
+      alert("Check-in successful!");
 
       setSignInData({
         name: '',
@@ -143,38 +98,97 @@ function ContractorSafetySystem() {
       setSignature('');
 
     } catch (err) {
+      alert("Submission failed.");
       console.error(err);
-      alert("Submission failed. Please contact site admin.");
     }
   };
 
   const handleAgreementSign = () => {
     if (signature.trim().length < 3) {
-      alert('Please enter your full name.');
+      alert("Enter full name.");
       return;
     }
     setAgreementSigned(true);
     setActiveTab('signin');
   };
 
-  const handleDownload = (file) => window.open(file, '_blank');
-
-  /* ================= UI ================= */
   return (
     <div className="min-h-screen bg-gray-50">
+
       {/* HEADER */}
-      <div className="burgundy-bg text-white py-6 px-4 shadow-lg">
-        <div className="max-w-6xl mx-auto flex items-center">
-          <img src={LOGO_FILE} className="h-16 mr-4" onError={e => e.target.style.display='none'} />
-          <div>
-            <h1 className="text-3xl font-bold">{COMPANY_NAME}</h1>
-            <p className="burgundy-light">Contractor & Visitor Safety Management System</p>
-          </div>
-        </div>
+      <div className="burgundy-bg text-white p-6">
+        <h1 className="text-3xl font-bold">{COMPANY_NAME}</h1>
+        <p className="burgundy-light">Contractor & Visitor Safety Management System</p>
       </div>
 
-      {/* CONTENT */}
-      {/* --- Everything else unchanged from your original UI --- */}
+      {/* TABS */}
+      <div className="flex bg-white shadow">
+        {['signin','agreement','documents','visitors'].map(tab => (
+          <button
+            key={tab}
+            className={`px-6 py-4 ${activeTab===tab ? 'burgundy-text border-b-2 burgundy-border' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {/* SIGN IN */}
+      {activeTab === 'signin' && (
+        <div className="p-6 max-w-xl mx-auto bg-white mt-6 rounded shadow">
+          <input className="w-full mb-2 p-2 border" placeholder="Full Name"
+            value={signInData.name}
+            onChange={e=>setSignInData({...signInData,name:e.target.value})}/>
+          <input className="w-full mb-2 p-2 border" placeholder="Company"
+            value={signInData.company}
+            onChange={e=>setSignInData({...signInData,company:e.target.value})}/>
+          <textarea className="w-full mb-2 p-2 border" placeholder="Purpose"
+            value={signInData.purpose}
+            onChange={e=>setSignInData({...signInData,purpose:e.target.value})}/>
+          <button onClick={handleSignIn} className="w-full burgundy-bg text-white p-3">
+            Check In
+          </button>
+        </div>
+      )}
+
+      {/* AGREEMENT */}
+      {activeTab === 'agreement' && (
+        <div className="p-6 max-w-xl mx-auto bg-white mt-6 rounded shadow">
+          <p className="mb-4">I agree to follow all site safety rules.</p>
+          <input className="w-full p-2 border" placeholder="Type full name"
+            value={signature}
+            onChange={e=>setSignature(e.target.value)}/>
+          <button onClick={handleAgreementSign} className="w-full burgundy-bg text-white p-3 mt-4">
+            Sign Agreement
+          </button>
+        </div>
+      )}
+
+      {/* DOCUMENTS */}
+      {activeTab === 'documents' && (
+        <div className="p-6 max-w-xl mx-auto bg-white mt-6 rounded shadow">
+          {documents.map((doc,i)=>(
+            <a key={i} href={doc.file} target="_blank" className="text-blue-600 underline">
+              {doc.name}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* VISITORS */}
+      {activeTab === 'visitors' && (
+        <div className="p-6 max-w-xl mx-auto bg-white mt-6 rounded shadow">
+          {visitors.length===0 ? "No visitors" :
+            visitors.map(v=>(
+              <div key={v.id} className="border-b py-2">
+                <strong>{v.name}</strong> — {v.company}
+              </div>
+            ))
+          }
+        </div>
+      )}
+
     </div>
   );
 }
