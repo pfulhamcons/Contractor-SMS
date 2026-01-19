@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contractor Safety Management System</title>
+    <title>Contractor & Visitor Safety Management System</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -23,8 +23,8 @@
         const { useState } = React;
 
         // CONFIGURATION
-        const LOGO_FILE = 'logo.png';
-        const COMPANY_NAME = 'Manufacturing Plant';
+        const LOGO_FILE = 'osi-group-logo-vector.png';
+        const COMPANY_NAME = 'West Chicago';
 
         // Icons
         const UserCheckIcon = () => (
@@ -82,10 +82,7 @@
           const [visitors, setVisitors] = useState([]);
 
           const documents = [
-            { name: 'Safety Guidelines 2024', file: 'documents/safety-guidelines.pdf', category: 'Safety' },
-            { name: 'Emergency Procedures', file: 'documents/emergency-procedures.pdf', category: 'Emergency' },
-            { name: 'PPE Requirements', file: 'documents/ppe-requirements.pdf', category: 'Safety' },
-            { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
+            { name: 'Holiday Schedule', file: 'documents/2026 Holiday Schedule.pdf', category: 'Safety' },
           ];
 
           const handleSignIn = () => {
@@ -146,7 +143,7 @@
                   />
                   <div>
                     <h1 className="text-3xl font-bold">{COMPANY_NAME}</h1>
-                    <p className="burgundy-light mt-1">Contractor Safety Management System</p>
+                    <p className="burgundy-light mt-1">Contractor & Visitor Safety Management System</p>
                   </div>
                 </div>
               </div>
@@ -260,7 +257,7 @@
 
                 {activeTab === 'agreement' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contractor Safety Agreement</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Safety Agreement</h2>
                     
                     <div className="bg-gray-50 border border-gray-200 rounded p-6 mb-6 max-h-96 overflow-y-auto">
                       <h3 className="font-bold text-lg mb-4">Safety Rules and Regulations</h3>
