@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contractor & Visitor Safety Management System</title>
+    <title>Contractor Safety Management System</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -22,9 +22,17 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // CONFIGURATION
-        const LOGO_FILE = 'osi-group-logo-vector.png';
-        const COMPANY_NAME = 'West Chicago Facility';
+        // ============================================
+        // CONFIGURATION - CHANGE THESE VALUES
+        // ============================================
+        
+        const LOGO_FILE = 'logo.png';
+        const COMPANY_NAME = 'Manufacturing Plant';
+        
+        // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxR12dgSud-yzG975Qgvchh5Psvtrfz13XYoNGb55pBIPRE9xmws-0jkQzJcGPzew3i/exec';
+        
+        // ============================================
 
         // Icons
         const UserCheckIcon = () => (
@@ -80,14 +88,37 @@
           const [agreementSigned, setAgreementSigned] = useState(false);
           const [signature, setSignature] = useState('');
           const [visitors, setVisitors] = useState([]);
+          const [isSaving, setIsSaving] = useState(false);
 
           const documents = [
-            { name: 'Vicitor-Contractor Agreement', file: 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf', category: 'Safety' },
+            { name: 'Safety Guidelines 2024', file: 'documents/safety-guidelines.pdf', category: 'Safety' },
+            { name: 'Emergency Procedures', file: 'documents/emergency-procedures.pdf', category: 'Emergency' },
+            { name: 'PPE Requirements', file: 'documents/ppe-requirements.pdf', category: 'Safety' },
+            { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
           ];
 
-          const handleSignIn = () => {
+          // Function to save to Google Sheets
+          const saveToGoogleSheets = async (data) => {
+            try {
+              const response = await fetch(GOOGLE_SHEET_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+              });
+              
+              const result = await response.json();
+              return result.status === 'success';
+            } catch (error) {
+              console.error('Error saving to Google Sheets:', error);
+              return false;
+            }
+          };
+
+          const handleSignIn = async () => {
             if (!agreementSigned) {
-              alert('Please sign the agreement before checking in.');
+              alert('Please sign the safety agreement before checking in.');
               setActiveTab('agreement');
               return;
             }
@@ -97,15 +128,33 @@
               return;
             }
             
+            setIsSaving(true);
+            
+            const checkInTime = new Date().toLocaleTimeString();
             const newVisitor = {
               ...signInData,
-              checkInTime: new Date().toLocaleTimeString(),
+              checkInTime: checkInTime,
               id: Date.now()
             };
             
             setVisitors([newVisitor, ...visitors]);
             
-            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
+            // Save to Google Sheets
+            const saved = await saveToGoogleSheets({
+              name: signInData.name,
+              company: signInData.company,
+              purpose: signInData.purpose,
+              date: signInData.date,
+              checkInTime: checkInTime
+            });
+            
+            setIsSaving(false);
+            
+            if (saved) {
+              alert(`Check-in successful!\n\n✅ Saved to Google Sheets\n\n${signInData.name} from ${signInData.company} has been logged.`);
+            } else {
+              alert(`Check-in recorded locally.\n\n⚠️ Could not save to Google Sheets. Please check your internet connection or Google Sheets setup.`);
+            }
             
             setSignInData({
               name: '',
@@ -190,7 +239,7 @@
               <div className="max-w-6xl mx-auto px-4 py-8">
                 {activeTab === 'signin' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Check-In</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Contractor Check-In</h2>
                     
                     {agreementSigned ? (
                       <div className="bg-green-50 border border-green-200 rounded p-4 mb-6">
@@ -247,9 +296,10 @@
 
                       <button
                         onClick={handleSignIn}
-                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors"
+                        disabled={isSaving}
+                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Check In
+                        {isSaving ? 'Saving to Google Sheets...' : 'Check In'}
                       </button>
                     </div>
                   </div>
@@ -266,12 +316,12 @@
                         <p className="font-medium">By signing this agreement, I acknowledge and agree to:</p>
                         
                         <ol className="list-decimal list-inside space-y-2 ml-4">
-                          <li>Comply with all safety rules and regulations</li>
+                          <li>Comply with all safety rules and regulations of the facility</li>
                           <li>Wear appropriate Personal Protective Equipment (PPE) at all times</li>
                           <li>Report any unsafe conditions or incidents immediately</li>
                           <li>Follow all posted safety signs and warnings</li>
                           <li>Not operate any equipment without proper authorization</li>
-                          <li>View and follow all company programs and documents</li>
+                          <li>Attend all required safety briefings</li>
                           <li>Follow emergency evacuation procedures if required</li>
                           <li>Maintain a clean and safe work area</li>
                           <li>Not use drugs or alcohol on facility premises</li>
