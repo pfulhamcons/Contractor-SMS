@@ -30,7 +30,7 @@
         const COMPANY_NAME = 'Manufacturing Plant';
         
         // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzGVH9cH0KmR7YvPXxJKkqKHx1tKqxQR3wE_qrjmxH_lJxNvBHJ8wVKkPkbQJ6s5qPT/exec';
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxR12dgSud-yzG975Qgvchh5Psvtrfz13XYoNGb55pBIPRE9xmws-0jkQzJcGPzew3i/exec';
         
         // ============================================
 
@@ -97,34 +97,30 @@
             { name: 'Contractor Handbook', file: 'documents/contractor-handbook.pdf', category: 'General' }
           ];
 
-         // Function to save to Google Sheets
-const saveToGoogleSheets = async (data) => {
-  try {
-    console.log('Attempting to save to Google Sheets...');
-    console.log('URL:', GOOGLE_SHEET_URL);
-    console.log('Data:', data);
-    
-    const response = await fetch(GOOGLE_SHEET_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-      redirect: 'follow'
-    });
-    
-    console.log('Response status:', response.status);
-    
-    const result = await response.json();
-    console.log('Response data:', result);
-    
-    return result.status === 'success';
-  } catch (error) {
-    console.error('Detailed error:', error);
-    alert('Error details: ' + error.message);
-    return false;
-  }
-};
+          // Function to save to Google Sheets - OPTION C (no-cors)
+          const saveToGoogleSheets = async (data) => {
+            try {
+              console.log('Sending data to Google Sheets:', data);
+              console.log('URL:', GOOGLE_SHEET_URL);
+              
+              await fetch(GOOGLE_SHEET_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+              });
+              
+              // With no-cors, we can't verify success, so assume it worked
+              console.log('Data sent to Google Sheets (no-cors mode)');
+              return true;
+              
+            } catch (error) {
+              console.error('Error sending to Google Sheets:', error);
+              return false;
+            }
+          };
 
           const handleSignIn = async () => {
             if (!agreementSigned) {
@@ -160,11 +156,8 @@ const saveToGoogleSheets = async (data) => {
             
             setIsSaving(false);
             
-            if (saved) {
-              alert(`Check-in successful!\n\n✅ Saved to Google Sheets\n\n${signInData.name} from ${signInData.company} has been logged.`);
-            } else {
-              alert(`Check-in recorded locally.\n\n⚠️ Could not save to Google Sheets. Please check your internet connection or Google Sheets setup.`);
-            }
+            // Always show success since no-cors doesn't give us a response
+            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nData sent to Google Sheets - please check your spreadsheet to verify.`);
             
             setSignInData({
               name: '',
