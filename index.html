@@ -41,6 +41,13 @@
           </svg>
         );
 
+        const UserXIcon = () => (
+          <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+
         const CheckCircleIcon = () => (
           <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -85,6 +92,7 @@
             purpose: '',
             date: new Date().toISOString().split('T')[0]
           });
+          const [checkOutName, setCheckOutName] = useState('');
           const [agreementSigned, setAgreementSigned] = useState(false);
           const [signature, setSignature] = useState('');
           const [visitors, setVisitors] = useState([]);
@@ -92,13 +100,12 @@
 
           const documents = [
             { name: 'Visitor/Contractor Agreement', file: 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf', category: 'Safety' },
-
           ];
 
-          // Function to save to Google Sheets - OPTION C (no-cors)
-          const saveToGoogleSheets = async (data) => {
+          // Function to save to Google Sheets
+          const saveToGoogleSheets = async (data, action = 'checkin') => {
             try {
-              console.log('Sending data to Google Sheets:', data);
+              console.log(`Sending ${action} data to Google Sheets:`, data);
               console.log('URL:', GOOGLE_SHEET_URL);
               
               await fetch(GOOGLE_SHEET_URL, {
@@ -107,11 +114,13 @@
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                  ...data,
+                  action: action
+                })
               });
               
-              // With no-cors, we can't verify success, so assume it worked
-              console.log('Data sent to Google Sheets (no-cors mode)');
+              console.log(`Data sent to Google Sheets (${action}, no-cors mode)`);
               return true;
               
             } catch (error) {
@@ -143,18 +152,17 @@
             
             setVisitors([newVisitor, ...visitors]);
             
-            // Save to Google Sheets
-            const saved = await saveToGoogleSheets({
+            // Save to Google Sheets (Sheet1)
+            await saveToGoogleSheets({
               name: signInData.name,
               company: signInData.company,
               purpose: signInData.purpose,
               date: signInData.date,
               checkInTime: checkInTime
-            });
+            }, 'checkin');
             
             setIsSaving(false);
             
-            // Always show success since no-cors doesn't give us a response
             alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nData sent to Google Sheets - please check your spreadsheet to verify.`);
             
             setSignInData({
@@ -165,6 +173,34 @@
             });
             setAgreementSigned(false);
             setSignature('');
+          };
+
+          const handleCheckOut = async () => {
+            if (!checkOutName.trim()) {
+              alert('Please enter your name');
+              return;
+            }
+            
+            setIsSaving(true);
+            
+            const checkOutDate = new Date().toLocaleDateString();
+            const checkOutTime = new Date().toLocaleTimeString();
+            
+            // Save to Google Sheets (Sheet2)
+            await saveToGoogleSheets({
+              name: checkOutName,
+              date: checkOutDate,
+              checkOutTime: checkOutTime
+            }, 'checkout');
+            
+            // Remove from current visitors list if they exist
+            setVisitors(visitors.filter(v => v.name.toLowerCase() !== checkOutName.toLowerCase()));
+            
+            setIsSaving(false);
+            
+            alert(`Check-out successful!\n\n${checkOutName} has been logged out.\n\nData sent to Google Sheets (Sheet2) - please check your spreadsheet to verify.`);
+            
+            setCheckOutName('');
           };
 
           const handleAgreementSign = () => {
@@ -208,6 +244,14 @@
                       }`}
                     >
                       <UserCheckIcon />Check In
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('checkout')}
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
+                        activeTab === 'checkout' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <UserXIcon />Check Out
                     </button>
                     <button
                       onClick={() => setActiveTab('agreement')}
@@ -302,6 +346,39 @@
                       >
                         {isSaving ? 'Saving to Google Sheets...' : 'Check In'}
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'checkout' && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Check-Out</h2>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input
+                          type="text"
+                          value={checkOutName}
+                          onChange={(e) => setCheckOutName(e.target.value)}
+                          placeholder="Enter your name to check out"
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleCheckOut}
+                        disabled={isSaving}
+                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSaving ? 'Saving to Google Sheets...' : 'Check Out'}
+                      </button>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> Your check-out will be logged to Sheet2 in the Google Spreadsheet with your name, date, and timestamp.
+                      </p>
                     </div>
                   </div>
                 )}
