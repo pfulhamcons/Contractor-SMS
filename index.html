@@ -107,8 +107,15 @@
           // Function to save to Google Sheets
           const saveToGoogleSheets = async (data, action = 'checkin') => {
             try {
-              console.log(`Sending ${action} data to Google Sheets:`, data);
+              const payload = {
+                ...data,
+                action: action
+              };
+              
+              console.log('=== FULL PAYLOAD BEING SENT ===');
+              console.log(JSON.stringify(payload, null, 2));
               console.log('URL:', GOOGLE_SHEET_URL);
+              console.log('================================');
               
               await fetch(GOOGLE_SHEET_URL, {
                 method: 'POST',
@@ -116,10 +123,7 @@
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  ...data,
-                  action: action
-                })
+                body: JSON.stringify(payload)
               });
               
               console.log(`Data sent to Google Sheets (${action}, no-cors mode)`);
@@ -146,6 +150,26 @@
             setIsSaving(true);
             
             const checkInTime = new Date().toLocaleTimeString();
+            const dataToSend = {
+              name: signInData.name,
+              company: signInData.company,
+              companyHost: signInData.companyHost,
+              visitType: signInData.visitType,
+              purpose: signInData.purpose,
+              date: signInData.date,
+              checkInTime: checkInTime
+            };
+            
+            console.log('=== CHECK-IN DATA BEING SENT ===');
+            console.log('Name:', dataToSend.name);
+            console.log('Company:', dataToSend.company);
+            console.log('Company Host:', dataToSend.companyHost);
+            console.log('Visit Type:', dataToSend.visitType);
+            console.log('Purpose:', dataToSend.purpose);
+            console.log('Date:', dataToSend.date);
+            console.log('Check-In Time:', dataToSend.checkInTime);
+            console.log('================================');
+            
             const newVisitor = {
               ...signInData,
               checkInTime: checkInTime,
@@ -155,15 +179,7 @@
             setVisitors([newVisitor, ...visitors]);
             
             // Save to Google Sheets (Sheet1)
-            await saveToGoogleSheets({
-              name: signInData.name,
-              company: signInData.company,
-              companyHost: signInData.companyHost,
-              visitType: signInData.visitType,
-              purpose: signInData.purpose,
-              date: signInData.date,
-              checkInTime: checkInTime
-            }, 'checkin');
+            await saveToGoogleSheets(dataToSend, 'checkin');
             
             setIsSaving(false);
             
