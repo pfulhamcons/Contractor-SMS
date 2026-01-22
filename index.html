@@ -107,17 +107,20 @@
           // Function to save to Google Sheets
           const saveToGoogleSheets = async (data, action = 'checkin') => {
             try {
-              // Create form data
-              const formData = new FormData();
-              formData.append('action', action);
-              formData.append('name', data.name || '');
-              formData.append('company', data.company || '');
-              formData.append('companyHost', data.companyHost || '');
-              formData.append('visitType', data.visitType || '');
-              formData.append('purpose', data.purpose || '');
-              formData.append('date', data.date || '');
-              formData.append('checkInTime', data.checkInTime || '');
-              formData.append('checkOutTime', data.checkOutTime || '');
+              // Build URL with parameters
+              const params = new URLSearchParams({
+                action: action,
+                name: data.name || '',
+                company: data.company || '',
+                companyHost: data.companyHost || '',
+                visitType: data.visitType || '',
+                purpose: data.purpose || '',
+                date: data.date || '',
+                checkInTime: data.checkInTime || '',
+                checkOutTime: data.checkOutTime || ''
+              });
+              
+              const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
               
               console.log('=== DATA BEING SENT ===');
               console.log('Action:', action);
@@ -125,16 +128,16 @@
               console.log('Company:', data.company);
               console.log('Company Host:', data.companyHost);
               console.log('Visit Type:', data.visitType);
-              console.log('Purpose:', data.purpose);
-              console.log('URL:', GOOGLE_SHEET_URL);
+              console.log('URL:', url);
               console.log('=====================');
               
-              const response = await fetch(GOOGLE_SHEET_URL, {
-                method: 'POST',
-                body: formData
+              const response = await fetch(url, {
+                method: 'GET',
+                redirect: 'follow'
               });
               
-              console.log('Response received:', response.status);
+              const result = await response.text();
+              console.log('Response:', result);
               return true;
               
             } catch (error) {
