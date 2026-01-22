@@ -107,34 +107,34 @@
           // Function to save to Google Sheets
           const saveToGoogleSheets = async (data, action = 'checkin') => {
             try {
-              const payload = {
-                action: action,
-                name: data.name || '',
-                company: data.company || '',
-                companyHost: data.companyHost || '',
-                visitType: data.visitType || '',
-                purpose: data.purpose || '',
-                date: data.date || '',
-                checkInTime: data.checkInTime || '',
-                checkOutTime: data.checkOutTime || ''
-              };
+              // Create form data
+              const formData = new FormData();
+              formData.append('action', action);
+              formData.append('name', data.name || '');
+              formData.append('company', data.company || '');
+              formData.append('companyHost', data.companyHost || '');
+              formData.append('visitType', data.visitType || '');
+              formData.append('purpose', data.purpose || '');
+              formData.append('date', data.date || '');
+              formData.append('checkInTime', data.checkInTime || '');
+              formData.append('checkOutTime', data.checkOutTime || '');
               
-              console.log('=== FULL PAYLOAD BEING SENT ===');
-              console.log(JSON.stringify(payload, null, 2));
+              console.log('=== DATA BEING SENT ===');
+              console.log('Action:', action);
+              console.log('Name:', data.name);
+              console.log('Company:', data.company);
+              console.log('Company Host:', data.companyHost);
+              console.log('Visit Type:', data.visitType);
+              console.log('Purpose:', data.purpose);
               console.log('URL:', GOOGLE_SHEET_URL);
-              console.log('================================');
+              console.log('=====================');
               
               const response = await fetch(GOOGLE_SHEET_URL, {
                 method: 'POST',
-                redirect: 'follow',
-                headers: {
-                  'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify(payload)
+                body: formData
               });
               
-              console.log('Response status:', response.status);
-              console.log(`Data sent to Google Sheets (${action})`);
+              console.log('Response received:', response.status);
               return true;
               
             } catch (error) {
