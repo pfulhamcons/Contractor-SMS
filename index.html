@@ -343,15 +343,6 @@
                       }`}
                     >
                       <FileTextIcon />Documents
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('visitors')}
-                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
-                        activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Visitors
-                    </button>
                   </div>
                 </div>
               </div>
@@ -676,37 +667,6 @@
                         <strong>Note:</strong> Make sure your PDF files are in the "documents" folder
                       </p>
                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'visitors' && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Current Visitors</h2>
-                    
-                    {visitors.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
-                        <UserIcon />
-                        <p>No contractors currently checked in</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {visitors.map((visitor) => (
-                          <div key={visitor.id} className="p-4 border border-gray-200 rounded-lg">
-                            <div className="flex flex-col md:flex-row justify-between items-start">
-                              <div className="mb-2 md:mb-0">
-                                <h3 className="font-medium text-gray-900">{visitor.name}</h3>
-                                <p className="text-sm text-gray-600">{visitor.company}</p>
-                                <p className="text-sm text-gray-500 mt-1">{visitor.purpose}</p>
-                              </div>
-                              <div className="text-left md:text-right">
-                                <p className="text-sm font-medium text-gray-900">{visitor.checkInTime}</p>
-                                <p className="text-sm text-gray-500">{visitor.date}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
