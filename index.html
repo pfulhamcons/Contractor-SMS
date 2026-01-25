@@ -1,273 +1,720 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Visitor & Contractor Safety Management System</title>
-
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <style>
-    .burgundy-bg { background-color: #800020; }
-    .burgundy-text { color: #800020; }
-    .burgundy-border { border-color: #800020; }
-    .burgundy-hover:hover { background-color: #660019; }
-    .burgundy-light { color: #ffcccb; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor & Contractor Safety Management System</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .burgundy-bg { background-color: #800020; }
+        .burgundy-text { color: #800020; }
+        .burgundy-border { border-color: #800020; }
+        .burgundy-hover:hover { background-color: #660019; }
+        .burgundy-light { color: #ffcccb; }
+    </style>
 </head>
-
 <body>
-  <div id="root"></div>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useRef } = React;
 
-  <script type="text/babel">
-    const { useState, useRef, useEffect } = React;
+        // ============================================
+        // CONFIGURATION - CHANGE THESE VALUES
+        // ============================================
+        
+        const LOGO_FILE = 'osi-group-logo-vector.png';
+        const COMPANY_NAME = 'West Chicago';
+        
+        // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyOv9qjz8VG1FYPiATV_G04S5L8rhY1ClyrKBVqzp2cYIloTqb536sDDyKywtP-Qen8/exec';
 
-    // ============================================
-    // CONFIGURATION - CHANGE THESE VALUES
-    // ============================================
-    const LOGO_FILE = 'osi-group-logo-vector.png';
-    const COMPANY_NAME = 'West Chicago';
-    const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxgQtWZPS08jaXRsNNva85tuQmd3Zs8HdhUB0ZgJpR_Nv_GWmTMLoZO4ncrLwdPMduH/exec';
-    const REQUIRED_AGREEMENT_DOC = 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf';
-    // ============================================
+        // REQUIRED AGREEMENT DOCUMENT (must be opened before signing)
+        const REQUIRED_AGREEMENT_DOC = 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf';
+        
+        // ============================================
 
-    // Icons (simplified)
-    const UserIcon = () => (
-      <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    );
-    const CheckCircleIcon = () => (
-      <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    );
-    const AlertTriangleIcon = () => (
-      <svg className="inline w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    );
+        // Icons
+        const UserCheckIcon = () => (
+          <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        );
 
-    function ContractorSafetySystem() {
-      const [activeTab, setActiveTab] = useState('signin');
-      const [signInData, setSignInData] = useState({ name: '', company: '', companyHost: '', visitType: '', purpose: '', date: new Date().toISOString().split('T')[0] });
-      const [checkOutName, setCheckOutName] = useState('');
-      const [agreementSigned, setAgreementSigned] = useState(false);
-      const [signature, setSignature] = useState('');
-      const [agreementOpened, setAgreementOpened] = useState(false);
-      const [agreementScrolled, setAgreementScrolled] = useState(false);
-      const [agreementConfirmed, setAgreementConfirmed] = useState(false);
-      const [visitors, setVisitors] = useState([]);
-      const [evacList, setEvacList] = useState([]);
-      const [isSaving, setIsSaving] = useState(false);
-      const [isLoadingEvac, setIsLoadingEvac] = useState(false);
-      const agreementBoxRef = useRef(null);
+        const UserXIcon = () => (
+          <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
 
-      const toMDYYYY = (dateObj) => dateObj.toLocaleDateString('en-US');
-      const todayMDYYYY = toMDYYYY(new Date());
+        const CheckCircleIcon = () => (
+          <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
 
-      // -----------------------------
-      // GOOGLE SHEETS SAVE
-      // -----------------------------
-      const saveToGoogleSheets = async (data, action='checkin') => {
-        try {
-          const params = new URLSearchParams({
-            action,
-            name: data.name || '',
-            company: data.company || '',
-            companyHost: data.companyHost || '',
-            visitType: data.visitType || '',
-            purpose: data.purpose || '',
-            date: data.date || '',
-            checkInTime: data.checkInTime || '',
-            checkOutTime: data.checkOutTime || ''
+        const FileTextIcon = () => (
+          <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
+
+        const AlertTriangleIcon = () => (
+          <svg className="inline w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        );
+
+        const FileIcon = () => (
+          <svg className="w-8 h-8 mr-4 burgundy-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        );
+
+        const UserIcon = () => (
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        );
+
+        const CheckIcon = () => (
+          <svg className="inline w-12 h-12 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+
+        function ContractorSafetySystem() {
+          const [activeTab, setActiveTab] = useState('signin');
+          const [signInData, setSignInData] = useState({
+            name: '',
+            company: '',
+            companyHost: '',
+            visitType: '',
+            purpose: '',
+            date: new Date().toISOString().split('T')[0]
           });
-          const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
-          const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-          const result = await res.text();
-          console.log('Google Sheets Response:', result);
-          return true;
-        } catch (err) {
-          console.error('Error sending to Google Sheets:', err);
-          return false;
-        }
-      };
+          const [checkOutName, setCheckOutName] = useState('');
+          const [agreementSigned, setAgreementSigned] = useState(false);
+          const [signature, setSignature] = useState('');
+          const [visitors, setVisitors] = useState([]);
+          const [isSaving, setIsSaving] = useState(false);
 
-      // -----------------------------
-      // FETCH VISITORS TODAY ONLY
-      // -----------------------------
-      const fetchVisitors = async () => {
-        try {
-          const url = `${GOOGLE_SHEET_URL}?action=getvisitors`;
-          const res = await fetch(url);
-          const data = await res.json();
+          // Agreement step tracking
+          const [agreementOpened, setAgreementOpened] = useState(false);
+          const [agreementScrolled, setAgreementScrolled] = useState(false);
+          const [agreementConfirmed, setAgreementConfirmed] = useState(false);
 
-          if (data.status === "success" && Array.isArray(data.visitors)) {
-            const filtered = data.visitors.filter(v => (v.date || "").trim() === todayMDYYYY);
-            setVisitors(filtered);
-          } else setVisitors([]);
-        } catch (err) {
-          console.error('Failed to fetch visitors:', err);
-          setVisitors([]);
-        }
-      };
+          // Ref for the scrollable agreement box
+          const agreementBoxRef = useRef(null);
 
-      // -----------------------------
-      // FETCH EVACUATION LIST
-      // -----------------------------
-      const fetchEvacuationList = async () => {
-        try {
-          setIsLoadingEvac(true);
-          const url = `${GOOGLE_SHEET_URL}?action=getvisitors`;
-          const res = await fetch(url);
-          const data = await res.json();
+          const documents = [
+            { name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' },
+          ];
 
-          if (data.status === "success" && Array.isArray(data.visitors)) {
-            const filtered = data.visitors.filter(v => (v.date || "").trim() === todayMDYYYY);
-            setEvacList(filtered);
-          } else setEvacList([]);
-        } catch (err) {
-          console.error('Failed to fetch evacuation list:', err);
-          setEvacList([]);
-        } finally {
-          setIsLoadingEvac(false);
-        }
-      };
+          // Function to save to Google Sheets
+          const saveToGoogleSheets = async (data, action = 'checkin') => {
+            try {
+              const params = new URLSearchParams({
+                action: action,
+                name: data.name || '',
+                company: data.company || '',
+                companyHost: data.companyHost || '',
+                visitType: data.visitType || '',
+                purpose: data.purpose || '',
+                date: data.date || '',
+                checkInTime: data.checkInTime || '',
+                checkOutTime: data.checkOutTime || ''
+              });
+              
+              const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
+              
+              console.log('=== DATA BEING SENT ===');
+              console.log('Action:', action);
+              console.log('Name:', data.name);
+              console.log('Company:', data.company);
+              console.log('Company Host:', data.companyHost);
+              console.log('Visit Type:', data.visitType);
+              console.log('URL:', url);
+              console.log('=====================');
+              
+              const response = await fetch(url, {
+                method: 'GET',
+                redirect: 'follow'
+              });
+              
+              const result = await response.text();
+              console.log('Response:', result);
+              return true;
+              
+            } catch (error) {
+              console.error('Error sending to Google Sheets:', error);
+              return false;
+            }
+          };
 
-      useEffect(() => {
-        if (activeTab === "evacuation") fetchEvacuationList();
-        if (activeTab === "visitors") fetchVisitors();
-      }, [activeTab]);
+          const handleSignIn = async () => {
+            if (!agreementSigned) {
+              alert('Please sign the safety agreement before checking in.');
+              setActiveTab('agreement');
+              return;
+            }
+            
+            if (!signInData.name || !signInData.company || !signInData.companyHost || !signInData.visitType || !signInData.purpose) {
+              alert('Please fill in all required fields');
+              return;
+            }
+            
+            setIsSaving(true);
+            
+            const checkInTime = new Date().toLocaleTimeString();
+            const dataToSend = {
+              name: signInData.name,
+              company: signInData.company,
+              companyHost: signInData.companyHost,
+              visitType: signInData.visitType,
+              purpose: signInData.purpose,
+              date: signInData.date,
+              checkInTime: checkInTime
+            };
+            
+            const newVisitor = {
+              ...signInData,
+              checkInTime: checkInTime,
+              id: Date.now()
+            };
+            
+            setVisitors([newVisitor, ...visitors]);
+            
+            await saveToGoogleSheets(dataToSend, 'checkin');
+            
+            setIsSaving(false);
+            
+            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nData sent to Google Sheets - please check your spreadsheet to verify.`);
+            
+            setSignInData({
+              name: '',
+              company: '',
+              companyHost: '',
+              visitType: '',
+              purpose: '',
+              date: new Date().toISOString().split('T')[0]
+            });
 
-      // -----------------------------
-      // HANDLERS
-      // -----------------------------
-      const handleSignIn = async () => {
-        if (!agreementSigned) {
-          alert('Please sign the safety agreement before checking in.');
-          setActiveTab('agreement'); return;
-        }
-        if (!signInData.name || !signInData.company || !signInData.companyHost || !signInData.visitType || !signInData.purpose) {
-          alert('Please fill in all required fields'); return;
-        }
-        setIsSaving(true);
-        const dataToSend = { ...signInData, checkInTime: new Date().toLocaleTimeString(), date: new Date().toLocaleDateString() };
-        await saveToGoogleSheets(dataToSend, 'checkin');
-        setIsSaving(false);
-        alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
-        setSignInData({ name:'', company:'', companyHost:'', visitType:'', purpose:'', date:new Date().toISOString().split('T')[0] });
-        setAgreementSigned(false); setSignature(''); setAgreementOpened(false); setAgreementScrolled(false); setAgreementConfirmed(false);
-      };
+            // Reset agreement steps for next visitor
+            setAgreementSigned(false);
+            setSignature('');
+            setAgreementOpened(false);
+            setAgreementScrolled(false);
+            setAgreementConfirmed(false);
+          };
 
-      const handleCheckOut = async () => {
-        if (!checkOutName.trim()) { alert('Please enter your name'); return; }
-        setIsSaving(true);
-        await saveToGoogleSheets({ name: checkOutName, date: new Date().toLocaleDateString(), checkOutTime: new Date().toLocaleTimeString() }, 'checkout');
-        setIsSaving(false);
-        alert(`Check-out successful!\n\n${checkOutName} has been logged out.`);
-        setCheckOutName('');
-      };
+          const handleCheckOut = async () => {
+            if (!checkOutName.trim()) {
+              alert('Please enter your name');
+              return;
+            }
+            
+            setIsSaving(true);
+            
+            const checkOutDate = new Date().toLocaleDateString();
+            const checkOutTime = new Date().toLocaleTimeString();
+            
+            await saveToGoogleSheets({
+              name: checkOutName,
+              date: checkOutDate,
+              checkOutTime: checkOutTime
+            }, 'checkout');
+            
+            setVisitors(visitors.filter(v => v.name.toLowerCase() !== checkOutName.toLowerCase()));
+            
+            setIsSaving(false);
+            
+            alert(`Check-out successful!\n\n${checkOutName} has been logged out.\n\nData sent to Google Sheets (Sheet2) - please check your spreadsheet to verify.`);
+            
+            setCheckOutName('');
+          };
 
-      const handleAgreementSign = () => {
-        if (!agreementOpened || !agreementScrolled || !agreementConfirmed || signature.trim().length < 3) {
-          alert('Please complete all steps to sign the agreement'); return;
-        }
-        setAgreementSigned(true);
-        alert('Agreement signed successfully! You can now check in.');
-        setActiveTab('signin');
-      };
+          const handleAgreementSign = () => {
+            if (!agreementOpened) {
+              alert('You must open the agreement PDF before signing.');
+              return;
+            }
 
-      const handleDownload = (file) => {
-        window.open(file, '_blank');
-        if (file === REQUIRED_AGREEMENT_DOC) setAgreementOpened(true);
-      };
+            if (!agreementScrolled) {
+              alert('Please scroll to the bottom of the agreement text before signing.');
+              return;
+            }
 
-      const handleAgreementScroll = () => {
-        const el = agreementBoxRef.current;
-        if (!el) return;
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) setAgreementScrolled(true);
-      };
+            if (!agreementConfirmed) {
+              alert('Please confirm that you have read and understand the agreement.');
+              return;
+            }
 
-      const handlePrintEvacuation = () => window.print();
+            if (signature.trim().length < 3) {
+              alert('Please enter your full name as signature');
+              return;
+            }
 
-      const canSignAgreement = agreementOpened && agreementScrolled && agreementConfirmed && signature.trim().length >=3;
+            setAgreementSigned(true);
+            alert('Agreement signed successfully! You can now check in.');
+            setActiveTab('signin');
+          };
 
-      const documents = [{ name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' }];
+          const handleDownload = (file) => {
+            window.open(file, '_blank');
 
-      // -----------------------------
-      // RENDER
-      // -----------------------------
-      return (
-        <div className="min-h-screen bg-gray-50">
-          <div className="burgundy-bg text-white py-6 px-4 shadow-lg">
-            <div className="max-w-6xl mx-auto flex items-center">
-              <img src={LOGO_FILE} alt="Company Logo" className="h-16 w-auto mr-4 object-contain" onError={e=>{e.target.style.display='none'}}/>
-              <div>
-                <h1 className="text-3xl font-bold">{COMPANY_NAME}</h1>
-                <p className="burgundy-light mt-1">Visitor & Contractor Safety Management System</p>
-              </div>
-            </div>
-          </div>
+            if (file === REQUIRED_AGREEMENT_DOC) {
+              setAgreementOpened(true);
+            }
+          };
 
-          <div className="bg-white shadow">
-            <div className="max-w-6xl mx-auto px-4 flex flex-wrap">
-              <button onClick={()=>setActiveTab('signin')} className={`px-4 py-4 font-medium ${activeTab==='signin'?'burgundy-text border-b-2 burgundy-border':'text-gray-600 hover:text-gray-900'}`}>Check In</button>
-              <button onClick={()=>setActiveTab('checkout')} className={`px-4 py-4 font-medium ${activeTab==='checkout'?'burgundy-text border-b-2 burgundy-border':'text-gray-600 hover:text-gray-900'}`}>Check Out</button>
-              <button onClick={()=>setActiveTab('agreement')} className={`px-4 py-4 font-medium ${activeTab==='agreement'?'burgundy-text border-b-2 burgundy-border':'text-gray-600 hover:text-gray-900'}`}>Agreement</button>
-              <button onClick={()=>setActiveTab('documents')} className={`px-4 py-4 font-medium ${activeTab==='documents'?'burgundy-text border-b-2 burgundy-border':'text-gray-600 hover:text-gray-900'}`}>Documents</button>
-              <button onClick={()=>setActiveTab('visitors')} className={`px-4 py-4 font-medium ${activeTab==='visitors'?'burgundy-text border-b-2 burgundy-border':'text-gray-600 hover:text-gray-900'}`}>Visitors</button>
-              <button onClick={()=>setActiveTab('evacuation')} className={`px-4 py-4 font-medium ${activeTab==='evacuation'?'burgundy-text border-b-2 burgundy-border':'text-gray-600 hover:text-gray-900'}`}>Evacuation Roll Call</button>
-            </div>
-          </div>
+          // Detect when user scrolls to the bottom of the agreement box
+          const handleAgreementScroll = () => {
+            const el = agreementBoxRef.current;
+            if (!el) return;
 
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            {/* Visitors tab */}
-            {activeTab==='visitors' && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Current Visitors</h2>
-                  <button onClick={fetchVisitors} className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors">Refresh</button>
-                </div>
+            const threshold = 10; // allow slight tolerance
+            const scrolledToBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
 
-                {visitors.length===0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <UserIcon />
-                    <p>No visitors checked in today</p>
+            if (scrolledToBottom) {
+              setAgreementScrolled(true);
+            }
+          };
+
+          // Helper: enable sign button only when all steps done
+          const canSignAgreement =
+            agreementOpened &&
+            agreementScrolled &&
+            agreementConfirmed &&
+            signature.trim().length >= 3;
+
+          return (
+            <div className="min-h-screen bg-gray-50">
+              <div className="burgundy-bg text-white py-6 px-4 shadow-lg">
+                <div className="max-w-6xl mx-auto flex items-center">
+                  <img 
+                    src={LOGO_FILE} 
+                    alt="Company Logo" 
+                    className="h-16 w-auto mr-4 object-contain"
+                    onError={(e) => {e.target.style.display='none'}}
+                  />
+                  <div>
+                    <h1 className="text-3xl font-bold">{COMPANY_NAME}</h1>
+                    <p className="burgundy-light mt-1">Visitor & Contractor Safety Management System</p>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {visitors.map((visitor,i)=>(
-                      <div key={i} className="p-4 border border-gray-200 rounded-lg">
-                        <div className="flex flex-col md:flex-row justify-between items-start">
-                          <div className="mb-2 md:mb-0">
-                            <h3 className="font-medium text-gray-900">{visitor.name}</h3>
-                            <p className="text-sm text-gray-600">{visitor.company}</p>
-                            <p className="text-sm text-gray-500 mt-1">{visitor.purpose}</p>
-                          </div>
-                          <div className="text-left md:text-right">
-                            <p className="text-sm font-medium text-gray-900">{visitor.checkInTime}</p>
-                            <p className="text-sm text-gray-500">{visitor.date}</p>
-                          </div>
-                        </div>
+                </div>
+              </div>
+
+              <div className="bg-white shadow">
+                <div className="max-w-6xl mx-auto px-4">
+                  <div className="flex flex-wrap">
+                    <button
+                      onClick={() => setActiveTab('signin')}
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
+                        activeTab === 'signin' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <UserCheckIcon />Check In
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('checkout')}
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
+                        activeTab === 'checkout' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <UserXIcon />Check Out
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('agreement')}
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
+                        activeTab === 'agreement' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <CheckCircleIcon />Agreement
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('documents')}
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
+                        activeTab === 'documents' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <FileTextIcon />Documents
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('visitors')}
+                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
+                        activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Visitors
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-6xl mx-auto px-4 py-8">
+                {activeTab === 'signin' && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Check-In</h2>
+                    
+                    {agreementSigned ? (
+                      <div className="bg-green-50 border border-green-200 rounded p-4 mb-6">
+                        <CheckCircleIcon />
+                        <span className="text-green-800 font-medium">Safety agreement signed</span>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-6">
+                        <AlertTriangleIcon />
+                        <span className="text-yellow-800">You must sign the safety agreement before checking in</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input
+                          type="text"
+                          value={signInData.name}
+                          onChange={(e) => setSignInData({...signInData, name: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
+                        <input
+                          type="text"
+                          value={signInData.company}
+                          onChange={(e) => setSignInData({...signInData, company: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Company Host / Point of Contact *</label>
+                        <input
+                          type="text"
+                          value={signInData.companyHost}
+                          onChange={(e) => setSignInData({...signInData, companyHost: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Visit Type *</label>
+                        <select
+                          value={signInData.visitType}
+                          onChange={(e) => setSignInData({...signInData, visitType: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        >
+                          <option value="">Select Visit Type</option>
+                          <option value="Customer Visit">Customer Visit</option>
+                          <option value="Contractor Work">Contractor Work</option>
+                          <option value="Customer Audit">Customer Audit</option>
+                          <option value="Executive Visit">Executive Visit</option>
+                          <option value="Management Meeting">Management Meeting</option>
+                          <option value="Safety Training">Safety Training</option>
+                          <option value="Food Safety Training">Food Safety Training</option>
+                          <option value="HR Training">HR Training</option>
+                          <option value="New Hire Orientation">New Hire Orientation</option>
+                          <option value="Facility Tour">Facility Tour</option>
+                          <option value="OSHA">OSHA</option>
+                          <option value="EPA">EPA</option>
+                          <option value="FDA">FDA</option>
+                          <option value="USDA">USDA</option>
+                          <option value="Local or State Regulatory">Local or State Regulatory</option>
+                          <option value="Law Enforcement">Law Enforcement</option>
+                          <option value="Fire Department">Fire Department</option>
+                          <option value="3rd Party Compliance Audit">3rd Party Compliance Audit</option>
+                          <option value="Supplier Visit">Supplier Visit</option>
+                          <option value="Pest Control">Pest Control</option>
+                          <option value="Utility Services">Utility Services</option>
+                          <option value="Safety Equipment Services">Safety Equipment Services</option>
+                          <option value="Interview">Interview</option>
+                          <option value="IT Support">IT Support</option>
+                          <option value="Freight/Carrier">Freight/Carrier</option>
+                          <option value="Maintenance/Services">Maintenance/Services</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Purpose of Visit *</label>
+                        <textarea
+                          value={signInData.purpose}
+                          onChange={(e) => setSignInData({...signInData, purpose: e.target.value})}
+                          rows="3"
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input
+                          type="date"
+                          value={signInData.date}
+                          onChange={(e) => setSignInData({...signInData, date: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleSignIn}
+                        disabled={isSaving}
+                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSaving ? 'Saving to Google Sheets...' : 'Check In'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'checkout' && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Check-Out</h2>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input
+                          type="text"
+                          value={checkOutName}
+                          onChange={(e) => setCheckOutName(e.target.value)}
+                          placeholder="Enter your name to check out"
+                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleCheckOut}
+                        disabled={isSaving}
+                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSaving ? 'Saving to Google Sheets...' : 'Check Out'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'agreement' && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Agreement</h2>
+                    
+                    {/* Agreement Text Box (scroll required) */}
+                    <div
+                      ref={agreementBoxRef}
+                      onScroll={handleAgreementScroll}
+                      className="bg-gray-50 border border-gray-200 rounded p-6 mb-3 max-h-96 overflow-y-auto"
+                    >
+                      <h3 className="font-bold text-lg mb-4">Visitor Rule Summary </h3>
+                      
+                      <div className="space-y-4 text-sm text-gray-700">
+                        <p className="font-medium">By signing this agreement, I acknowledge and agree to:</p>
+                        
+                        <ol className="list-decimal list-inside space-y-2 ml-4">
+                          <li>Comply with all safety rules and regulations of the facility</li>
+                          <li>Wear appropriate Personal Protective Equipment (PPE) at all times</li>
+                          <li>Report any unsafe conditions or incidents immediately</li>
+                          <li>Follow all posted safety signs and warnings</li>
+                          <li>Not operate any equipment without proper authorization</li>
+                          <li>Attend all required safety briefings</li>
+                          <li>Follow emergency evacuation procedures if required</li>
+                          <li>Maintain a clean and safe work area</li>
+                          <li>Not use drugs or alcohol on facility premises</li>
+                          <li>Follow all environmental and waste disposal procedures</li>
+                        </ol>
+
+                        <p className="font-medium mt-6">I understand that:</p>
+                        <ul className="list-disc list-inside space-y-2 ml-4">
+                          <li>Failure to comply may result in removal from the facility</li>
+                          <li>I am responsible for my own safety and the safety of others</li>
+                          <li>I must follow the instructions of my point of contact</li>
+                        </ul>
+
+                        <p className="text-xs text-gray-500 mt-6">
+                          End of agreement text.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Scroll status */}
+                    {!agreementScrolled ? (
+                      <p className="text-xs text-red-600 mb-6">
+                        🔽 Please scroll to the bottom of the agreement text above to continue.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-green-700 mb-6">
+                        ✔ Agreement text scrolled to the bottom.
+                      </p>
+                    )}
+
+                    {agreementSigned ? (
+                      <div className="bg-green-50 border border-green-200 rounded p-6 text-center">
+                        <CheckIcon />
+                        <p className="text-green-800 font-medium text-lg">Agreement Signed</p>
+                        <p className="text-green-700 text-sm mt-2">Signed by: {signature}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+
+                        {/* STEP 1: OPEN PDF */}
+                        <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                          <p className="text-sm text-gray-700 mb-2 font-medium">
+                            Step 1: Open the required agreement document
+                          </p>
+
+                          <button
+                            onClick={() => handleDownload(REQUIRED_AGREEMENT_DOC)}
+                            className="w-full px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors"
+                          >
+                            📄 Open Agreement PDF
+                          </button>
+
+                          {!agreementOpened ? (
+                            <p className="text-xs text-red-600 mt-2">
+                              You must open the agreement document before continuing.
+                            </p>
+                          ) : (
+                            <p className="text-xs text-green-700 mt-2">
+                              Agreement document opened ✔ Continue to Step 2.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* STEP 2: CHECKBOX CONFIRMATION (requires scroll + open) */}
+                        <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                          <p className="text-sm text-gray-700 mb-2 font-medium">
+                            Step 2: Confirm you have read and understand
+                          </p>
+
+                          <label className="flex items-start gap-3 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={agreementConfirmed}
+                              onChange={(e) => setAgreementConfirmed(e.target.checked)}
+                              disabled={!agreementOpened || !agreementScrolled}
+                              className="mt-1"
+                            />
+                            <span>
+                              I confirm that I have read and understand the Visitor/Contractor Agreement.
+                            </span>
+                          </label>
+
+                          {(!agreementOpened || !agreementScrolled) && (
+                            <p className="text-xs text-gray-500 mt-2">
+                              You must open the PDF and scroll to the bottom of the agreement text first.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* STEP 3: SIGNATURE */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Step 3: Type your full name to sign *
+                          </label>
+                          <input
+                            type="text"
+                            value={signature}
+                            onChange={(e) => setSignature(e.target.value)}
+                            placeholder={
+                              !agreementOpened
+                                ? "Open agreement PDF first"
+                                : !agreementScrolled
+                                  ? "Scroll to the bottom of the agreement text first"
+                                  : !agreementConfirmed
+                                    ? "Check the confirmation box first"
+                                    : "Enter your full name"
+                            }
+                            disabled={!agreementOpened || !agreementScrolled || !agreementConfirmed}
+                            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">This constitutes your electronic signature</p>
+                        </div>
+
+                        <button
+                          onClick={handleAgreementSign}
+                          disabled={!canSignAgreement}
+                          className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Sign Agreement
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'documents' && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Safety Documents</h2>
+                    
+                    <div className="grid gap-4">
+                      {documents.map((doc, idx) => (
+                        <div key={idx} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center mb-3 md:mb-0">
+                            <FileIcon />
+                            <div>
+                              <h3 className="font-medium text-gray-900">{doc.name}</h3>
+                              <p className="text-sm text-gray-500">{doc.category}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => handleDownload(doc.file)}
+                            className="w-full md:w-auto px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors"
+                          >
+                            Download PDF
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded">
+                      <p className="text-sm burgundy-text">
+                        <strong>Note:</strong> Make sure your PDF files are in the "documents" folder
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'visitors' && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Current Visitors</h2>
+                    
+                    {visitors.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <UserIcon />
+                        <p>No contractors currently checked in</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {visitors.map((visitor) => (
+                          <div key={visitor.id} className="p-4 border border-gray-200 rounded-lg">
+                            <div className="flex flex-col md:flex-row justify-between items-start">
+                              <div className="mb-2 md:mb-0">
+                                <h3 className="font-medium text-gray-900">{visitor.name}</h3>
+                                <p className="text-sm text-gray-600">{visitor.company}</p>
+                                <p className="text-sm text-gray-500 mt-1">{visitor.purpose}</p>
+                              </div>
+                              <div className="text-left md:text-right">
+                                <p className="text-sm font-medium text-gray-900">{visitor.checkInTime}</p>
+                                <p className="text-sm text-gray-500">{visitor.date}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          );
+        }
 
-            {/* Evacuation, Agreement, SignIn, CheckOut, Documents tabs... 
-                Keep your existing code here for those tabs (same as before)
-            */}
-          </div>
-        </div>
-      );
-    }
-
-    ReactDOM.render(<ContractorSafetySystem />, document.getElementById('root'));
-  </script>
+        ReactDOM.render(<ContractorSafetySystem />, document.getElementById('root'));
+    </script>
 </body>
 </html>
