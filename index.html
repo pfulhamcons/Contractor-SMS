@@ -31,10 +31,9 @@
     const LOGO_FILE = 'osi-group-logo-vector.png';
     const COMPANY_NAME = 'West Chicago';
 
-    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+    // ✅ PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
     const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyOv9qjz8VG1FYPiATV_G04S5L8rhY1ClyrKBVqzp2cYIloTqb536sDDyKywtP-Qen8/exec';
 
-    // REQUIRED AGREEMENT DOCUMENT (must be opened before signing)
     const REQUIRED_AGREEMENT_DOC = 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf';
     // ============================================
 
@@ -113,34 +112,27 @@
       const [visitors, setVisitors] = useState([]);
       const [isSaving, setIsSaving] = useState(false);
 
-      // Emergency Roll Call list (today only)
       const [evacList, setEvacList] = useState([]);
       const [isLoadingEvac, setIsLoadingEvac] = useState(false);
 
-      // Agreement step tracking
       const [agreementOpened, setAgreementOpened] = useState(false);
       const [agreementScrolled, setAgreementScrolled] = useState(false);
       const [agreementConfirmed, setAgreementConfirmed] = useState(false);
 
-      // Ref for the scrollable agreement box
       const agreementBoxRef = useRef(null);
 
       const documents = [
         { name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' },
       ];
 
-      // Convert date to "M/D/YYYY" to match your sheet default (from new Date().toLocaleDateString())
-      const toMDYYYY = (dateObj) => {
-        return dateObj.toLocaleDateString('en-US');
-      };
+      const todayMDYYYY = new Date().toLocaleDateString("en-US");
 
-      const todayMDYYYY = toMDYYYY(new Date());
-
-      // Save to Google Sheets
+      // ✅ IMPORTANT FIX:
+      // Always send data as QUERY STRING parameters so Apps Script receives them in e.parameter
       const saveToGoogleSheets = async (data, action = 'checkin') => {
         try {
           const params = new URLSearchParams({
-            action: action,
+            action,
             name: data.name || '',
             company: data.company || '',
             companyHost: data.companyHost || '',
@@ -153,38 +145,38 @@
 
           const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
 
-          const response = await fetch(url, {
-            method: 'GET',
-            redirect: 'follow'
-          });
+          const res = await fetch(url, { method: "GET" });
+          const json = await res.json();
 
-          const result = await response.text();
-          console.log("Google Sheets Response:", result);
+          console.log("Apps Script response:", json);
 
-          return true;
-        } catch (error) {
-          console.error('Error sending to Google Sheets:', error);
+          return json.status === "success";
+        } catch (err) {
+          console.error("Error saving to Google Sheets:", err);
           return false;
         }
       };
 
-      // Fetch visitors from Google Sheets (today only for evacuation list)
+      const fetchVisitors = async () => {
+        try {
+          const res = await fetch(`${GOOGLE_SHEET_URL}?action=getvisitors`);
+          const data = await res.json();
+          setVisitors(Array.isArray(data.visitors) ? data.visitors : []);
+        } catch (err) {
+          console.error("Failed to fetch visitors:", err);
+          setVisitors([]);
+        }
+      };
+
       const fetchEvacuationList = async () => {
         try {
           setIsLoadingEvac(true);
 
-          const url = `${GOOGLE_SHEET_URL}?action=getvisitors`;
-          const res = await fetch(url);
+          const res = await fetch(`${GOOGLE_SHEET_URL}?action=getvisitors`);
           const data = await res.json();
 
           if (data.status === "success" && Array.isArray(data.visitors)) {
-            // Filter only TODAY
-            const filtered = data.visitors.filter(v => {
-              // v.date should be like "M/D/YYYY"
-              return (v.date || "").trim() === todayMDYYYY;
-            });
-
-            // Sort by check-in time if available
+            const filtered = data.visitors.filter(v => (v.date || "").trim() === todayMDYYYY);
             setEvacList(filtered);
           } else {
             setEvacList([]);
@@ -198,32 +190,9 @@
         }
       };
 
-      // Also keep your "Current Visitors" list updated
-      const fetchVisitors = async () => {
-        try {
-          const url = `${GOOGLE_SHEET_URL}?action=getvisitors`;
-          const res = await fetch(url);
-          const data = await res.json();
-
-          if (data.status === "success" && Array.isArray(data.visitors)) {
-            setVisitors(data.visitors);
-          } else {
-            setVisitors([]);
-          }
-        } catch (err) {
-          console.error("Failed to fetch visitors:", err);
-          setVisitors([]);
-        }
-      };
-
-      // When user clicks Evacuation tab, auto-load list
       useEffect(() => {
-        if (activeTab === "evacuation") {
-          fetchEvacuationList();
-        }
-        if (activeTab === "visitors") {
-          fetchVisitors();
-        }
+        if (activeTab === "visitors") fetchVisitors();
+        if (activeTab === "evacuation") fetchEvacuationList();
       }, [activeTab]);
 
       const handleSignIn = async () => {
@@ -240,23 +209,26 @@
 
         setIsSaving(true);
 
-        const checkInTime = new Date().toLocaleTimeString();
         const dataToSend = {
           name: signInData.name,
           company: signInData.company,
           companyHost: signInData.companyHost,
           visitType: signInData.visitType,
           purpose: signInData.purpose,
-          // IMPORTANT: your Apps Script stores date as toLocaleDateString by default
-          date: new Date().toLocaleDateString(),
-          checkInTime: checkInTime
+          date: new Date().toLocaleDateString("en-US"),
+          checkInTime: new Date().toLocaleTimeString("en-US")
         };
 
-        await saveToGoogleSheets(dataToSend, 'checkin');
+        const ok = await saveToGoogleSheets(dataToSend, 'checkin');
 
         setIsSaving(false);
 
-        alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
+        if (!ok) {
+          alert("❌ Error saving check-in. Please try again.");
+          return;
+        }
+
+        alert(`✅ Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
 
         setSignInData({
           name: '',
@@ -267,7 +239,6 @@
           date: new Date().toISOString().split('T')[0]
         });
 
-        // Reset agreement steps for next visitor
         setAgreementSigned(false);
         setSignature('');
         setAgreementOpened(false);
@@ -283,19 +254,20 @@
 
         setIsSaving(true);
 
-        const checkOutDate = new Date().toLocaleDateString();
-        const checkOutTime = new Date().toLocaleTimeString();
-
-        await saveToGoogleSheets({
+        const ok = await saveToGoogleSheets({
           name: checkOutName,
-          date: checkOutDate,
-          checkOutTime: checkOutTime
+          date: new Date().toLocaleDateString("en-US"),
+          checkOutTime: new Date().toLocaleTimeString("en-US")
         }, 'checkout');
 
         setIsSaving(false);
 
-        alert(`Check-out successful!\n\n${checkOutName} has been logged out.`);
+        if (!ok) {
+          alert("❌ Error saving check-out. Please try again.");
+          return;
+        }
 
+        alert(`✅ Check-out successful!\n\n${checkOutName} has been logged out.`);
         setCheckOutName('');
       };
 
@@ -327,13 +299,9 @@
 
       const handleDownload = (file) => {
         window.open(file, '_blank');
-
-        if (file === REQUIRED_AGREEMENT_DOC) {
-          setAgreementOpened(true);
-        }
+        if (file === REQUIRED_AGREEMENT_DOC) setAgreementOpened(true);
       };
 
-      // Detect when user scrolls to the bottom of the agreement box
       const handleAgreementScroll = () => {
         const el = agreementBoxRef.current;
         if (!el) return;
@@ -341,9 +309,7 @@
         const threshold = 10;
         const scrolledToBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
 
-        if (scrolledToBottom) {
-          setAgreementScrolled(true);
-        }
+        if (scrolledToBottom) setAgreementScrolled(true);
       };
 
       const canSignAgreement =
@@ -352,9 +318,7 @@
         agreementConfirmed &&
         signature.trim().length >= 3;
 
-      const handlePrintEvacuation = () => {
-        window.print();
-      };
+      const handlePrintEvacuation = () => window.print();
 
       return (
         <div className="min-h-screen bg-gray-50">
@@ -376,57 +340,45 @@
           <div className="bg-white shadow">
             <div className="max-w-6xl mx-auto px-4">
               <div className="flex flex-wrap">
-                <button
-                  onClick={() => setActiveTab('signin')}
+                <button onClick={() => setActiveTab('signin')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'signin' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
+                  }`}>
                   <UserCheckIcon />Check In
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('checkout')}
+                <button onClick={() => setActiveTab('checkout')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'checkout' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
+                  }`}>
                   <UserXIcon />Check Out
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('agreement')}
+                <button onClick={() => setActiveTab('agreement')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'agreement' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
+                  }`}>
                   <CheckCircleIcon />Agreement
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('documents')}
+                <button onClick={() => setActiveTab('documents')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'documents' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
+                  }`}>
                   <FileTextIcon />Documents
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('visitors')}
+                <button onClick={() => setActiveTab('visitors')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
+                  }`}>
                   Visitors
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('evacuation')}
+                <button onClick={() => setActiveTab('evacuation')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'evacuation' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
+                  }`}>
                   <ClipboardIcon />Evacuation Roll Call
                 </button>
               </div>
@@ -715,12 +667,6 @@
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded">
-                  <p className="text-sm burgundy-text">
-                    <strong>Note:</strong> Make sure your PDF files are in the "documents" folder
-                  </p>
-                </div>
               </div>
             )}
 
@@ -765,7 +711,7 @@
               </div>
             )}
 
-            {/* EVACUATION ROLL CALL */}
+            {/* EVACUATION */}
             {activeTab === 'evacuation' && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
@@ -853,10 +799,6 @@
                         ))}
                       </tbody>
                     </table>
-
-                    <p className="text-xs text-gray-500 mt-3">
-                      Tip: Click <strong>Print</strong> to create a paper roll call sheet for emergency use.
-                    </p>
                   </div>
                 )}
               </div>
