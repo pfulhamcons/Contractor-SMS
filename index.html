@@ -31,9 +31,10 @@
     const LOGO_FILE = 'osi-group-logo-vector.png';
     const COMPANY_NAME = 'West Chicago';
 
-    // ✅ PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-    const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxgQtWZPS08jaXRsNNva85tuQmd3Zs8HdhUB0ZgJpR_Nv_GWmTMLoZO4ncrLwdPMduH/exec';
+    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+    const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyOv9qjz8VG1FYPiATV_G04S5L8rhY1ClyrKBVqzp2cYIloTqb536sDDyKywtP-Qen8/exec';
 
+    // REQUIRED AGREEMENT DOCUMENT (must be opened before signing)
     const REQUIRED_AGREEMENT_DOC = 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf';
     // ============================================
 
@@ -112,67 +113,86 @@
       const [visitors, setVisitors] = useState([]);
       const [isSaving, setIsSaving] = useState(false);
 
+      // Emergency Roll Call list (today only)
       const [evacList, setEvacList] = useState([]);
       const [isLoadingEvac, setIsLoadingEvac] = useState(false);
 
+      // Agreement step tracking
       const [agreementOpened, setAgreementOpened] = useState(false);
       const [agreementScrolled, setAgreementScrolled] = useState(false);
       const [agreementConfirmed, setAgreementConfirmed] = useState(false);
 
+      // Ref for the scrollable agreement box
       const agreementBoxRef = useRef(null);
 
       const documents = [
         { name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' },
       ];
 
-      const todayMDYYYY = new Date().toLocaleDateString("en-US");
+      // Convert date to "M/D/YYYY" to match your sheet default (new Date().toLocaleDateString())
+      const toMDYYYY = (dateObj) => dateObj.toLocaleDateString('en-US');
+      const todayMDYYYY = toMDYYYY(new Date());
 
-      // ✅ IMPORTANT FIX:
-      // Always send data as QUERY STRING parameters so Apps Script receives them in e.parameter
-      const saveToGoogleSheets = async (data, action = 'checkin') => {
+      // ✅ FIXED: Save to Google Sheets using GET query string + parse JSON response
+      const saveToGoogleSheets = async (data, action = "checkin") => {
         try {
           const params = new URLSearchParams({
-            action,
-            name: data.name || '',
-            company: data.company || '',
-            companyHost: data.companyHost || '',
-            visitType: data.visitType || '',
-            purpose: data.purpose || '',
-            date: data.date || '',
-            checkInTime: data.checkInTime || '',
-            checkOutTime: data.checkOutTime || ''
+            action: action,
+            name: data.name || "",
+            company: data.company || "",
+            companyHost: data.companyHost || "",
+            visitType: data.visitType || "",
+            purpose: data.purpose || "",
+            date: data.date || "",
+            checkInTime: data.checkInTime || "",
+            checkOutTime: data.checkOutTime || ""
           });
 
           const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
 
-          const res = await fetch(url, { method: "GET" });
-          const json = await res.json();
+          const response = await fetch(url, { method: "GET" });
+          const result = await response.json();
 
-          console.log("Apps Script response:", json);
+          console.log("Google Sheets Response:", result);
 
-          return json.status === "success";
-        } catch (err) {
-          console.error("Error saving to Google Sheets:", err);
+          if (!result || result.status !== "success") {
+            alert("Google Sheets error: " + (result.message || "Unknown error"));
+            return false;
+          }
+
+          return true;
+        } catch (error) {
+          console.error("Error sending to Google Sheets:", error);
+          alert("Failed to save to Google Sheets. Check console logs.");
           return false;
         }
       };
 
+      // Fetch visitors from Google Sheets
       const fetchVisitors = async () => {
         try {
-          const res = await fetch(`${GOOGLE_SHEET_URL}?action=getvisitors`);
+          const url = `${GOOGLE_SHEET_URL}?action=getvisitors`;
+          const res = await fetch(url);
           const data = await res.json();
-          setVisitors(Array.isArray(data.visitors) ? data.visitors : []);
+
+          if (data.status === "success" && Array.isArray(data.visitors)) {
+            setVisitors(data.visitors);
+          } else {
+            setVisitors([]);
+          }
         } catch (err) {
           console.error("Failed to fetch visitors:", err);
           setVisitors([]);
         }
       };
 
+      // Fetch visitors from Google Sheets (today only for evacuation list)
       const fetchEvacuationList = async () => {
         try {
           setIsLoadingEvac(true);
 
-          const res = await fetch(`${GOOGLE_SHEET_URL}?action=getvisitors`);
+          const url = `${GOOGLE_SHEET_URL}?action=getvisitors`;
+          const res = await fetch(url);
           const data = await res.json();
 
           if (data.status === "success" && Array.isArray(data.visitors)) {
@@ -190,20 +210,21 @@
         }
       };
 
+      // Auto-load lists when switching tabs
       useEffect(() => {
-        if (activeTab === "visitors") fetchVisitors();
         if (activeTab === "evacuation") fetchEvacuationList();
+        if (activeTab === "visitors") fetchVisitors();
       }, [activeTab]);
 
       const handleSignIn = async () => {
         if (!agreementSigned) {
-          alert('Please sign the safety agreement before checking in.');
-          setActiveTab('agreement');
+          alert("Please sign the safety agreement before checking in.");
+          setActiveTab("agreement");
           return;
         }
 
         if (!signInData.name || !signInData.company || !signInData.companyHost || !signInData.visitType || !signInData.purpose) {
-          alert('Please fill in all required fields');
+          alert("Please fill in all required fields");
           return;
         }
 
@@ -215,20 +236,16 @@
           companyHost: signInData.companyHost,
           visitType: signInData.visitType,
           purpose: signInData.purpose,
-          date: new Date().toLocaleDateString("en-US"),
-          checkInTime: new Date().toLocaleTimeString("en-US")
+          date: new Date().toLocaleDateString(),
+          checkInTime: new Date().toLocaleTimeString()
         };
 
-        const ok = await saveToGoogleSheets(dataToSend, 'checkin');
-
+        const ok = await saveToGoogleSheets(dataToSend, "checkin");
         setIsSaving(false);
 
-        if (!ok) {
-          alert("❌ Error saving check-in. Please try again.");
-          return;
-        }
+        if (!ok) return;
 
-        alert(`✅ Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
+        alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
 
         setSignInData({
           name: '',
@@ -239,16 +256,21 @@
           date: new Date().toISOString().split('T')[0]
         });
 
+        // Reset agreement steps for next visitor
         setAgreementSigned(false);
         setSignature('');
         setAgreementOpened(false);
         setAgreementScrolled(false);
         setAgreementConfirmed(false);
+
+        // Refresh lists
+        fetchVisitors();
+        fetchEvacuationList();
       };
 
       const handleCheckOut = async () => {
         if (!checkOutName.trim()) {
-          alert('Please enter your name');
+          alert("Please enter your name");
           return;
         }
 
@@ -256,49 +278,43 @@
 
         const ok = await saveToGoogleSheets({
           name: checkOutName,
-          date: new Date().toLocaleDateString("en-US"),
-          checkOutTime: new Date().toLocaleTimeString("en-US")
-        }, 'checkout');
+          date: new Date().toLocaleDateString(),
+          checkOutTime: new Date().toLocaleTimeString()
+        }, "checkout");
 
         setIsSaving(false);
 
-        if (!ok) {
-          alert("❌ Error saving check-out. Please try again.");
-          return;
-        }
+        if (!ok) return;
 
-        alert(`✅ Check-out successful!\n\n${checkOutName} has been logged out.`);
+        alert(`Check-out successful!\n\n${checkOutName} has been logged out.`);
         setCheckOutName('');
       };
 
       const handleAgreementSign = () => {
         if (!agreementOpened) {
-          alert('You must open the agreement PDF before signing.');
+          alert("You must open the agreement PDF before signing.");
           return;
         }
-
         if (!agreementScrolled) {
-          alert('Please scroll to the bottom of the agreement text before signing.');
+          alert("Please scroll to the bottom of the agreement text before signing.");
           return;
         }
-
         if (!agreementConfirmed) {
-          alert('Please confirm that you have read and understand the agreement.');
+          alert("Please confirm that you have read and understand the agreement.");
           return;
         }
-
         if (signature.trim().length < 3) {
-          alert('Please enter your full name as signature');
+          alert("Please enter your full name as signature");
           return;
         }
 
         setAgreementSigned(true);
-        alert('Agreement signed successfully! You can now check in.');
-        setActiveTab('signin');
+        alert("Agreement signed successfully! You can now check in.");
+        setActiveTab("signin");
       };
 
       const handleDownload = (file) => {
-        window.open(file, '_blank');
+        window.open(file, "_blank");
         if (file === REQUIRED_AGREEMENT_DOC) setAgreementOpened(true);
       };
 
@@ -308,7 +324,6 @@
 
         const threshold = 10;
         const scrolledToBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
-
         if (scrolledToBottom) setAgreementScrolled(true);
       };
 
@@ -340,45 +355,63 @@
           <div className="bg-white shadow">
             <div className="max-w-6xl mx-auto px-4">
               <div className="flex flex-wrap">
-                <button onClick={() => setActiveTab('signin')}
+                <button
+                  onClick={() => setActiveTab('signin')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'signin' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}>
+                  }`}
+                >
                   <UserCheckIcon />Check In
                 </button>
 
-                <button onClick={() => setActiveTab('checkout')}
+                <button
+                  onClick={() => setActiveTab('checkout')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'checkout' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}>
+                  }`}
+                >
                   <UserXIcon />Check Out
                 </button>
 
-                <button onClick={() => setActiveTab('agreement')}
+                <button
+                  onClick={() => setActiveTab('agreement')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'agreement' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}>
+                  }`}
+                >
                   <CheckCircleIcon />Agreement
                 </button>
 
-                <button onClick={() => setActiveTab('documents')}
+                <button
+                  onClick={() => setActiveTab('documents')}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'documents' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}>
+                  }`}
+                >
                   <FileTextIcon />Documents
                 </button>
 
-                <button onClick={() => setActiveTab('visitors')}
+                <button
+                  onClick={() => {
+                    setActiveTab("visitors");
+                    fetchVisitors();
+                  }}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}>
+                  }`}
+                >
                   Visitors
                 </button>
 
-                <button onClick={() => setActiveTab('evacuation')}
+                <button
+                  onClick={() => {
+                    setActiveTab("evacuation");
+                    fetchEvacuationList();
+                  }}
                   className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
                     activeTab === 'evacuation' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                  }`}>
+                  }`}
+                >
                   <ClipboardIcon />Evacuation Roll Call
                 </button>
               </div>
@@ -667,6 +700,12 @@
                     </div>
                   ))}
                 </div>
+
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded">
+                  <p className="text-sm burgundy-text">
+                    <strong>Note:</strong> Make sure your PDF files are in the "documents" folder
+                  </p>
+                </div>
               </div>
             )}
 
@@ -711,7 +750,7 @@
               </div>
             )}
 
-            {/* EVACUATION */}
+            {/* EVACUATION ROLL CALL */}
             {activeTab === 'evacuation' && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
@@ -731,7 +770,7 @@
                     </button>
 
                     <button
-                      onClick={handlePrintEvacuation}
+                      onClick={() => window.print()}
                       className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors"
                     >
                       Print
@@ -799,6 +838,10 @@
                         ))}
                       </tbody>
                     </table>
+
+                    <p className="text-xs text-gray-500 mt-3">
+                      Tip: Click <strong>Print</strong> to create a paper roll call sheet for emergency use.
+                    </p>
                   </div>
                 )}
               </div>
