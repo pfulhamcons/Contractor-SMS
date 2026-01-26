@@ -20,7 +20,7 @@
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState, useRef } = React;
+        const { useState, useRef, useEffect } = React;
 
         // ============================================
         // CONFIGURATION - CHANGE THESE VALUES
@@ -87,6 +87,12 @@
           </svg>
         );
 
+        const RefreshIcon = () => (
+          <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        );
+
         function ContractorSafetySystem() {
           const [activeTab, setActiveTab] = useState('signin');
           const [signInData, setSignInData] = useState({
@@ -102,6 +108,7 @@
           const [signature, setSignature] = useState('');
           const [visitors, setVisitors] = useState([]);
           const [isSaving, setIsSaving] = useState(false);
+          const [isLoadingVisitors, setIsLoadingVisitors] = useState(false);
 
           // Agreement step tracking
           const [agreementOpened, setAgreementOpened] = useState(false);
@@ -114,6 +121,41 @@
           const documents = [
             { name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' },
           ];
+
+          // Function to fetch visitors from Google Sheets
+          const fetchVisitors = async () => {
+            setIsLoadingVisitors(true);
+            try {
+              const params = new URLSearchParams({
+                action: 'getVisitors'
+              });
+              
+              const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
+              
+              const response = await fetch(url, {
+                method: 'GET',
+                redirect: 'follow'
+              });
+              
+              const result = await response.json();
+              
+              if (result.status === 'success' && result.data) {
+                setVisitors(result.data);
+              }
+              
+            } catch (error) {
+              console.error('Error fetching visitors:', error);
+            } finally {
+              setIsLoadingVisitors(false);
+            }
+          };
+
+          // Load visitors when the visitors tab is opened
+          useEffect(() => {
+            if (activeTab === 'visitors') {
+              fetchVisitors();
+            }
+          }, [activeTab]);
 
           // Function to save to Google Sheets
           const saveToGoogleSheets = async (data, action = 'checkin') => {
@@ -181,14 +223,6 @@
               checkInTime: checkInTime
             };
             
-            const newVisitor = {
-              ...signInData,
-              checkInTime: checkInTime,
-              id: Date.now()
-            };
-            
-            setVisitors([newVisitor, ...visitors]);
-            
             await saveToGoogleSheets(dataToSend, 'checkin');
             
             setIsSaving(false);
@@ -228,8 +262,6 @@
               date: checkOutDate,
               checkOutTime: checkOutTime
             }, 'checkout');
-            
-            setVisitors(visitors.filter(v => v.name.toLowerCase() !== checkOutName.toLowerCase()));
             
             setIsSaving(false);
             
@@ -681,21 +713,38 @@
 
                 {activeTab === 'visitors' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Current Visitors</h2>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900">Current Visitors</h2>
+                      <button
+                        onClick={fetchVisitors}
+                        disabled={isLoadingVisitors}
+                        className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshIcon />
+                        {isLoadingVisitors ? 'Loading...' : 'Refresh'}
+                      </button>
+                    </div>
                     
-                    {visitors.length === 0 ? (
+                    {isLoadingVisitors ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 burgundy-border mx-auto mb-4"></div>
+                        <p>Loading visitors...</p>
+                      </div>
+                    ) : visitors.length === 0 ? (
                       <div className="text-center py-12 text-gray-500">
                         <UserIcon />
-                        <p>No contractors currently checked in</p>
+                        <p>No visitors currently checked in</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {visitors.map((visitor) => (
-                          <div key={visitor.id} className="p-4 border border-gray-200 rounded-lg">
+                        {visitors.map((visitor, index) => (
+                          <div key={index} className="p-4 border border-gray-200 rounded-lg">
                             <div className="flex flex-col md:flex-row justify-between items-start">
-                              <div className="mb-2 md:mb-0">
+                              <div className="mb-2 md:mb-0 flex-1">
                                 <h3 className="font-medium text-gray-900">{visitor.name}</h3>
                                 <p className="text-sm text-gray-600">{visitor.company}</p>
+                                <p className="text-sm text-gray-500 mt-1">Host: {visitor.companyHost}</p>
+                                <p className="text-sm text-gray-500">Type: {visitor.visitType}</p>
                                 <p className="text-sm text-gray-500 mt-1">{visitor.purpose}</p>
                               </div>
                               <div className="text-left md:text-right">
