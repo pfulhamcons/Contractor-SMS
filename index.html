@@ -37,7 +37,7 @@
         
         // ============================================
 
-        // Icons (keeping all the same icons from before)
+        // Icons
         const UserCheckIcon = () => (
           <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -116,101 +116,103 @@
           const [agreementScrolled, setAgreementScrolled] = useState(false);
           const [agreementConfirmed, setAgreementConfirmed] = useState(false);
 
-          // Ref for the scrollable agreement box
           const agreementBoxRef = useRef(null);
 
           const documents = [
             { name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' },
           ];
 
-          // Function to fetch visitors from Google Sheets
+          // Fetch visitors using GET with URL params
           const fetchVisitors = async () => {
             setIsLoadingVisitors(true);
             setDebugInfo('Fetching visitors...');
             try {
-              const url = `${GOOGLE_SHEET_URL}?action=getVisitors&timestamp=${Date.now()}`;
+              const url = `${GOOGLE_SHEET_URL}?action=getVisitors&t=${Date.now()}`;
+              console.log('Fetching:', url);
               
-              console.log('Fetching visitors from:', url);
+              const response = await fetch(url);
+              const text = await response.text();
+              console.log('Response:', text);
               
-              const response = await fetch(url, {
-                method: 'GET',
-                redirect: 'follow'
-              });
-              
-              const responseText = await response.text();
-              console.log('Raw response:', responseText);
-              
-              const result = JSON.parse(responseText);
-              console.log('Parsed result:', result);
+              const result = JSON.parse(text);
               
               if (result.status === 'success' && Array.isArray(result.data)) {
                 setVisitors(result.data);
                 setDebugInfo(`Loaded ${result.data.length} visitors`);
               } else {
-                setDebugInfo(`No visitors found or error: ${JSON.stringify(result)}`);
+                setDebugInfo(`No data: ${JSON.stringify(result)}`);
               }
               
             } catch (error) {
-              console.error('Error fetching visitors:', error);
+              console.error('Error:', error);
               setDebugInfo(`Error: ${error.message}`);
             } finally {
               setIsLoadingVisitors(false);
             }
           };
 
-          // Load visitors when the visitors tab is opened
           useEffect(() => {
             if (activeTab === 'visitors') {
               fetchVisitors();
             }
           }, [activeTab]);
 
-          // FIXED: Function to save to Google Sheets with proper encoding
+          // Save to Google Sheets using POST with JSON
           const saveToGoogleSheets = async (data, action = 'checkin') => {
             try {
-              // Build the URL manually to ensure proper encoding
-              let url = GOOGLE_SHEET_URL + '?';
-              
-              const params = {
+              const payload = {
                 action: action,
-                name: data.name || '',
-                company: data.company || '',
-                companyHost: data.companyHost || '',
-                visitType: data.visitType || '',
-                purpose: data.purpose || '',
-                date: data.date || '',
-                checkInTime: data.checkInTime || '',
-                checkOutTime: data.checkOutTime || ''
+                name: data.name,
+                company: data.company,
+                companyHost: data.companyHost,
+                visitType: data.visitType,
+                purpose: data.purpose,
+                date: data.date,
+                checkInTime: data.checkInTime,
+                checkOutTime: data.checkOutTime
               };
               
-              // Manually build query string with proper encoding
-              const queryParts = [];
-              for (const [key, value] of Object.entries(params)) {
-                if (value) { // Only add if value exists
-                  queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+              console.log('=== SENDING DATA ===');
+              console.log('Payload:', JSON.stringify(payload, null, 2));
+              
+              // Create a hidden form to submit
+              const form = document.createElement('form');
+              form.method = 'POST';
+              form.action = GOOGLE_SHEET_URL;
+              form.target = 'hidden_iframe';
+              
+              // Add each field as a hidden input
+              Object.keys(payload).forEach(key => {
+                if (payload[key]) {
+                  const input = document.createElement('input');
+                  input.type = 'hidden';
+                  input.name = key;
+                  input.value = payload[key];
+                  form.appendChild(input);
                 }
-              }
-              url += queryParts.join('&');
-              
-              console.log('=== SENDING TO GOOGLE SHEETS ===');
-              console.log('URL:', url);
-              console.log('Params being sent:', params);
-              console.log('================================');
-              
-              const response = await fetch(url, {
-                method: 'GET',
-                redirect: 'follow',
-                mode: 'no-cors' // This helps with CORS issues
               });
               
-              console.log('Response received');
+              // Create hidden iframe if it doesn't exist
+              let iframe = document.getElementById('hidden_iframe');
+              if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'hidden_iframe';
+                iframe.name = 'hidden_iframe';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+              }
+              
+              document.body.appendChild(form);
+              form.submit();
+              document.body.removeChild(form);
+              
+              console.log('Form submitted');
               return true;
               
             } catch (error) {
-              console.error('Error sending to Google Sheets:', error);
-              // Even if there's an error, the data might have been saved
-              // Google Apps Script with no-cors mode doesn't return readable responses
-              return true;
+              console.error('Error:', error);
+              alert('Error saving: ' + error.message);
+              return false;
             }
           };
 
@@ -239,13 +241,14 @@
               checkInTime: checkInTime
             };
             
-            console.log('Submitting check-in:', dataToSend);
-            
             await saveToGoogleSheets(dataToSend, 'checkin');
+            
+            // Wait a moment for the data to be saved
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             setIsSaving(false);
             
-            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nPlease check your Google Sheet to verify all data was saved correctly.`);
+            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nPlease check your Google Sheet.`);
             
             setSignInData({
               name: '',
@@ -256,7 +259,6 @@
               date: new Date().toISOString().split('T')[0]
             });
 
-            // Reset agreement steps for next visitor
             setAgreementSigned(false);
             setSignature('');
             setAgreementOpened(false);
@@ -281,6 +283,8 @@
               checkOutTime: checkOutTime
             }, 'checkout');
             
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             setIsSaving(false);
             
             alert(`Check-out successful!\n\n${checkOutName} has been logged out.`);
@@ -293,17 +297,14 @@
               alert('You must open the agreement PDF before signing.');
               return;
             }
-
             if (!agreementScrolled) {
               alert('Please scroll to the bottom of the agreement text before signing.');
               return;
             }
-
             if (!agreementConfirmed) {
               alert('Please confirm that you have read and understand the agreement.');
               return;
             }
-
             if (signature.trim().length < 3) {
               alert('Please enter your full name as signature');
               return;
@@ -316,7 +317,6 @@
 
           const handleDownload = (file) => {
             window.open(file, '_blank');
-
             if (file === REQUIRED_AGREEMENT_DOC) {
               setAgreementOpened(true);
             }
@@ -325,20 +325,14 @@
           const handleAgreementScroll = () => {
             const el = agreementBoxRef.current;
             if (!el) return;
-
             const threshold = 10;
             const scrolledToBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
-
             if (scrolledToBottom) {
               setAgreementScrolled(true);
             }
           };
 
-          const canSignAgreement =
-            agreementOpened &&
-            agreementScrolled &&
-            agreementConfirmed &&
-            signature.trim().length >= 3;
+          const canSignAgreement = agreementOpened && agreementScrolled && agreementConfirmed && signature.trim().length >= 3;
 
           return (
             <div className="min-h-screen bg-gray-50">
@@ -360,44 +354,19 @@
               <div className="bg-white shadow">
                 <div className="max-w-6xl mx-auto px-4">
                   <div className="flex flex-wrap">
-                    <button
-                      onClick={() => setActiveTab('signin')}
-                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
-                        activeTab === 'signin' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
+                    <button onClick={() => setActiveTab('signin')} className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${activeTab === 'signin' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'}`}>
                       <UserCheckIcon />Check In
                     </button>
-                    <button
-                      onClick={() => setActiveTab('checkout')}
-                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
-                        activeTab === 'checkout' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
+                    <button onClick={() => setActiveTab('checkout')} className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${activeTab === 'checkout' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'}`}>
                       <UserXIcon />Check Out
                     </button>
-                    <button
-                      onClick={() => setActiveTab('agreement')}
-                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
-                        activeTab === 'agreement' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
+                    <button onClick={() => setActiveTab('agreement')} className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${activeTab === 'agreement' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'}`}>
                       <CheckCircleIcon />Agreement
                     </button>
-                    <button
-                      onClick={() => setActiveTab('documents')}
-                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
-                        activeTab === 'documents' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
+                    <button onClick={() => setActiveTab('documents')} className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${activeTab === 'documents' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'}`}>
                       <FileTextIcon />Documents
                     </button>
-                    <button
-                      onClick={() => setActiveTab('visitors')}
-                      className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${
-                        activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
+                    <button onClick={() => setActiveTab('visitors')} className={`px-4 md:px-6 py-4 font-medium transition-colors text-sm md:text-base ${activeTab === 'visitors' ? 'burgundy-text border-b-2 burgundy-border' : 'text-gray-600 hover:text-gray-900'}`}>
                       Visitors
                     </button>
                   </div>
@@ -424,41 +393,19 @@
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                        <input
-                          type="text"
-                          value={signInData.name}
-                          onChange={(e) => setSignInData({...signInData, name: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
+                        <input type="text" value={signInData.name} onChange={(e) => setSignInData({...signInData, name: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent" />
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
-                        <input
-                          type="text"
-                          value={signInData.company}
-                          onChange={(e) => setSignInData({...signInData, company: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
+                        <input type="text" value={signInData.company} onChange={(e) => setSignInData({...signInData, company: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent" />
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Company Host / Point of Contact *</label>
-                        <input
-                          type="text"
-                          value={signInData.companyHost}
-                          onChange={(e) => setSignInData({...signInData, companyHost: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
+                        <input type="text" value={signInData.companyHost} onChange={(e) => setSignInData({...signInData, companyHost: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent" />
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Visit Type *</label>
-                        <select
-                          value={signInData.visitType}
-                          onChange={(e) => setSignInData({...signInData, visitType: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        >
+                        <select value={signInData.visitType} onChange={(e) => setSignInData({...signInData, visitType: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent">
                           <option value="">Select Visit Type</option>
                           <option value="Customer Visit">Customer Visit</option>
                           <option value="Contractor Work">Contractor Work</option>
@@ -489,32 +436,15 @@
                           <option value="Other">Other</option>
                         </select>
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Purpose of Visit *</label>
-                        <textarea
-                          value={signInData.purpose}
-                          onChange={(e) => setSignInData({...signInData, purpose: e.target.value})}
-                          rows="3"
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
+                        <textarea value={signInData.purpose} onChange={(e) => setSignInData({...signInData, purpose: e.target.value})} rows="3" className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent" />
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input
-                          type="date"
-                          value={signInData.date}
-                          onChange={(e) => setSignInData({...signInData, date: e.target.value})}
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
+                        <input type="date" value={signInData.date} onChange={(e) => setSignInData({...signInData, date: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent" />
                       </div>
-
-                      <button
-                        onClick={handleSignIn}
-                        disabled={isSaving}
-                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
+                      <button onClick={handleSignIn} disabled={isSaving} className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         {isSaving ? 'Saving...' : 'Check In'}
                       </button>
                     </div>
@@ -524,24 +454,12 @@
                 {activeTab === 'checkout' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Check-Out</h2>
-                    
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                        <input
-                          type="text"
-                          value={checkOutName}
-                          onChange={(e) => setCheckOutName(e.target.value)}
-                          placeholder="Enter your name to check out"
-                          className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent"
-                        />
+                        <input type="text" value={checkOutName} onChange={(e) => setCheckOutName(e.target.value)} placeholder="Enter your name to check out" className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent" />
                       </div>
-
-                      <button
-                        onClick={handleCheckOut}
-                        disabled={isSaving}
-                        className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
+                      <button onClick={handleCheckOut} disabled={isSaving} className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         {isSaving ? 'Saving...' : 'Check Out'}
                       </button>
                     </div>
@@ -551,17 +469,10 @@
                 {activeTab === 'agreement' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Agreement</h2>
-                    
-                    <div
-                      ref={agreementBoxRef}
-                      onScroll={handleAgreementScroll}
-                      className="bg-gray-50 border border-gray-200 rounded p-6 mb-3 max-h-96 overflow-y-auto"
-                    >
+                    <div ref={agreementBoxRef} onScroll={handleAgreementScroll} className="bg-gray-50 border border-gray-200 rounded p-6 mb-3 max-h-96 overflow-y-auto">
                       <h3 className="font-bold text-lg mb-4">Visitor General Conduct </h3>
-                      
                       <div className="space-y-4 text-sm text-gray-700">
                         <p className="font-medium">By signing this agreement, I acknowledge and agree to:</p>
-                        
                         <ol className="list-decimal list-inside space-y-2 ml-4">
                           <li>Check-in and Check-out at the facility</li>
                           <li>Follow all OSI Procedures during the visit</li>
@@ -574,14 +485,12 @@
                           <li>Not operate equipment without permission</li>
                           <li>Follow Personal Safety and GMP Practices at OSI</li>
                         </ol>
-
                         <p className="font-medium mt-6">I understand that:</p>
                         <ul className="list-disc list-inside space-y-2 ml-4">
                           <li>Failure to comply may result in removal from the facility</li>
                           <li>I am responsible for my own safety and the safety of others</li>
                           <li>I must follow the instructions of my point of contact</li>
                         </ul>
-
                         <p className="text-xs text-gray-500 mt-6">
                           Next open and read our Personal Safety and GMP for Visitors & Contractors.
                         </p>
@@ -589,13 +498,9 @@
                     </div>
 
                     {!agreementScrolled ? (
-                      <p className="text-xs text-red-600 mb-6">
-                        🔽 Please scroll to the bottom of the agreement text above to continue.
-                      </p>
+                      <p className="text-xs text-red-600 mb-6">🔽 Please scroll to the bottom of the agreement text above to continue.</p>
                     ) : (
-                      <p className="text-xs text-green-700 mb-6">
-                        ✔ Agreement text scrolled to the bottom.
-                      </p>
+                      <p className="text-xs text-green-700 mb-6">✔ Agreement text scrolled to the bottom.</p>
                     )}
 
                     {agreementSigned ? (
@@ -607,81 +512,32 @@
                     ) : (
                       <div className="space-y-4">
                         <div className="p-4 border border-gray-200 rounded-lg bg-white">
-                          <p className="text-sm text-gray-700 mb-2 font-medium">
-                            Step 1: Open the required agreement document
-                          </p>
-
-                          <button
-                            onClick={() => handleDownload(REQUIRED_AGREEMENT_DOC)}
-                            className="w-full px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors"
-                          >
+                          <p className="text-sm text-gray-700 mb-2 font-medium">Step 1: Open the required agreement document</p>
+                          <button onClick={() => handleDownload(REQUIRED_AGREEMENT_DOC)} className="w-full px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors">
                             📄 Open Agreement PDF
                           </button>
-
                           {!agreementOpened ? (
-                            <p className="text-xs text-red-600 mt-2">
-                              You must open the agreement document before continuing.
-                            </p>
+                            <p className="text-xs text-red-600 mt-2">You must open the agreement document before continuing.</p>
                           ) : (
-                            <p className="text-xs text-green-700 mt-2">
-                              Agreement document opened ✔ Continue to Step 2.
-                            </p>
+                            <p className="text-xs text-green-700 mt-2">Agreement document opened ✔ Continue to Step 2.</p>
                           )}
                         </div>
-
                         <div className="p-4 border border-gray-200 rounded-lg bg-white">
-                          <p className="text-sm text-gray-700 mb-2 font-medium">
-                            Step 2: Confirm you have read and understand
-                          </p>
-
+                          <p className="text-sm text-gray-700 mb-2 font-medium">Step 2: Confirm you have read and understand</p>
                           <label className="flex items-start gap-3 text-sm text-gray-700">
-                            <input
-                              type="checkbox"
-                              checked={agreementConfirmed}
-                              onChange={(e) => setAgreementConfirmed(e.target.checked)}
-                              disabled={!agreementOpened || !agreementScrolled}
-                              className="mt-1"
-                            />
-                            <span>
-                              I confirm that I have read and understand the Visitor/Contractor Agreement.
-                            </span>
+                            <input type="checkbox" checked={agreementConfirmed} onChange={(e) => setAgreementConfirmed(e.target.checked)} disabled={!agreementOpened || !agreementScrolled} className="mt-1" />
+                            <span>I confirm that I have read and understand the Visitor/Contractor Agreement.</span>
                           </label>
-
                           {(!agreementOpened || !agreementScrolled) && (
-                            <p className="text-xs text-gray-500 mt-2">
-                              You must open the PDF and scroll to the bottom of the agreement text first.
-                            </p>
+                            <p className="text-xs text-gray-500 mt-2">You must open the PDF and scroll to the bottom of the agreement text first.</p>
                           )}
                         </div>
-
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Step 3: Type your full name to sign *
-                          </label>
-                          <input
-                            type="text"
-                            value={signature}
-                            onChange={(e) => setSignature(e.target.value)}
-                            placeholder={
-                              !agreementOpened
-                                ? "Open agreement PDF first"
-                                : !agreementScrolled
-                                  ? "Scroll to the bottom of the agreement text first"
-                                  : !agreementConfirmed
-                                    ? "Check the confirmation box first"
-                                    : "Enter your full name"
-                            }
-                            disabled={!agreementOpened || !agreementScrolled || !agreementConfirmed}
-                            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Step 3: Type your full name to sign *</label>
+                          <input type="text" value={signature} onChange={(e) => setSignature(e.target.value)} placeholder={!agreementOpened ? "Open agreement PDF first" : !agreementScrolled ? "Scroll to the bottom of the agreement text first" : !agreementConfirmed ? "Check the confirmation box first" : "Enter your full name"} disabled={!agreementOpened || !agreementScrolled || !agreementConfirmed} className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed" />
                           <p className="text-xs text-gray-500 mt-1">This constitutes your electronic signature</p>
                         </div>
-
-                        <button
-                          onClick={handleAgreementSign}
-                          disabled={!canSignAgreement}
-                          className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
+                        <button onClick={handleAgreementSign} disabled={!canSignAgreement} className="w-full burgundy-bg text-white py-3 rounded-lg font-medium burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                           Sign Agreement
                         </button>
                       </div>
@@ -692,7 +548,6 @@
                 {activeTab === 'documents' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Safety Documents</h2>
-                    
                     <div className="grid gap-4">
                       {documents.map((doc, idx) => (
                         <div key={idx} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
@@ -703,20 +558,14 @@
                               <p className="text-sm text-gray-500">{doc.category}</p>
                             </div>
                           </div>
-                          <button 
-                            onClick={() => handleDownload(doc.file)}
-                            className="w-full md:w-auto px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors"
-                          >
+                          <button onClick={() => handleDownload(doc.file)} className="w-full md:w-auto px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors">
                             Download PDF
                           </button>
                         </div>
                       ))}
                     </div>
-
                     <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded">
-                      <p className="text-sm burgundy-text">
-                        <strong>Note:</strong> Any additional documentation can be accessed with a company representative
-                      </p>
+                      <p className="text-sm burgundy-text"><strong>Note:</strong> Any additional documentation can be accessed with a company representative</p>
                     </div>
                   </div>
                 )}
@@ -725,22 +574,15 @@
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold text-gray-900">Current Visitors</h2>
-                      <button
-                        onClick={fetchVisitors}
-                        disabled={isLoadingVisitors}
-                        className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <RefreshIcon />
-                        {isLoadingVisitors ? 'Loading...' : 'Refresh'}
+                      <button onClick={fetchVisitors} disabled={isLoadingVisitors} className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <RefreshIcon />{isLoadingVisitors ? 'Loading...' : 'Refresh'}
                       </button>
                     </div>
-
                     {debugInfo && (
                       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
                         <strong>Status:</strong> {debugInfo}
                       </div>
                     )}
-                    
                     {isLoadingVisitors ? (
                       <div className="text-center py-12 text-gray-500">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 burgundy-border mx-auto mb-4"></div>
@@ -750,7 +592,7 @@
                       <div className="text-center py-12 text-gray-500">
                         <UserIcon />
                         <p>No visitors currently checked in</p>
-                        <p className="text-xs mt-2 text-gray-400">Make sure you have checked in visitors in your Google Sheet</p>
+                        <p className="text-xs mt-2 text-gray-400">Check-in a visitor first, then refresh this page</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
