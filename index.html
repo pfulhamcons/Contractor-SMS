@@ -109,6 +109,7 @@
           const [visitors, setVisitors] = useState([]);
           const [isSaving, setIsSaving] = useState(false);
           const [isLoadingVisitors, setIsLoadingVisitors] = useState(false);
+          const [debugInfo, setDebugInfo] = useState('');
 
           // Agreement step tracking
           const [agreementOpened, setAgreementOpened] = useState(false);
@@ -125,26 +126,37 @@
           // Function to fetch visitors from Google Sheets
           const fetchVisitors = async () => {
             setIsLoadingVisitors(true);
+            setDebugInfo('Starting fetch...');
             try {
-              const params = new URLSearchParams({
-                action: 'getVisitors'
-              });
+              const url = `${GOOGLE_SHEET_URL}?action=getVisitors&timestamp=${Date.now()}`;
               
-              const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
+              console.log('Fetching from:', url);
+              setDebugInfo(`Fetching from: ${url}`);
               
               const response = await fetch(url, {
                 method: 'GET',
                 redirect: 'follow'
               });
               
-              const result = await response.json();
+              console.log('Response status:', response.status);
+              const responseText = await response.text();
+              console.log('Response text:', responseText);
+              setDebugInfo(`Response: ${responseText}`);
+              
+              const result = JSON.parse(responseText);
+              console.log('Parsed result:', result);
               
               if (result.status === 'success' && result.data) {
+                console.log('Setting visitors:', result.data);
                 setVisitors(result.data);
+                setDebugInfo(`Loaded ${result.data.length} visitors successfully`);
+              } else {
+                setDebugInfo(`Error: ${JSON.stringify(result)}`);
               }
               
             } catch (error) {
               console.error('Error fetching visitors:', error);
+              setDebugInfo(`Error: ${error.message}`);
             } finally {
               setIsLoadingVisitors(false);
             }
@@ -157,10 +169,11 @@
             }
           }, [activeTab]);
 
-          // Function to save to Google Sheets
+          // Function to save to Google Sheets - FIXED VERSION
           const saveToGoogleSheets = async (data, action = 'checkin') => {
             try {
-              const params = new URLSearchParams({
+              // Build query parameters properly
+              const params = {
                 action: action,
                 name: data.name || '',
                 company: data.company || '',
@@ -170,18 +183,19 @@
                 date: data.date || '',
                 checkInTime: data.checkInTime || '',
                 checkOutTime: data.checkOutTime || ''
-              });
+              };
               
-              const url = `${GOOGLE_SHEET_URL}?${params.toString()}`;
+              // Create URL with parameters
+              const queryString = Object.keys(params)
+                .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+                .join('&');
               
-              console.log('=== DATA BEING SENT ===');
-              console.log('Action:', action);
-              console.log('Name:', data.name);
-              console.log('Company:', data.company);
-              console.log('Company Host:', data.companyHost);
-              console.log('Visit Type:', data.visitType);
+              const url = `${GOOGLE_SHEET_URL}?${queryString}`;
+              
+              console.log('=== SENDING TO GOOGLE SHEETS ===');
               console.log('URL:', url);
-              console.log('=====================');
+              console.log('Data:', params);
+              console.log('================================');
               
               const response = await fetch(url, {
                 method: 'GET',
@@ -189,11 +203,12 @@
               });
               
               const result = await response.text();
-              console.log('Response:', result);
+              console.log('Google Sheets Response:', result);
               return true;
               
             } catch (error) {
               console.error('Error sending to Google Sheets:', error);
+              alert('Error saving data: ' + error.message);
               return false;
             }
           };
@@ -223,27 +238,31 @@
               checkInTime: checkInTime
             };
             
-            await saveToGoogleSheets(dataToSend, 'checkin');
+            console.log('Check-in data:', dataToSend);
+            
+            const success = await saveToGoogleSheets(dataToSend, 'checkin');
             
             setIsSaving(false);
             
-            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nData sent to Google Sheets - please check your spreadsheet to verify.`);
-            
-            setSignInData({
-              name: '',
-              company: '',
-              companyHost: '',
-              visitType: '',
-              purpose: '',
-              date: new Date().toISOString().split('T')[0]
-            });
+            if (success) {
+              alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nPlease verify the data appears correctly in your Google Sheet.`);
+              
+              setSignInData({
+                name: '',
+                company: '',
+                companyHost: '',
+                visitType: '',
+                purpose: '',
+                date: new Date().toISOString().split('T')[0]
+              });
 
-            // Reset agreement steps for next visitor
-            setAgreementSigned(false);
-            setSignature('');
-            setAgreementOpened(false);
-            setAgreementScrolled(false);
-            setAgreementConfirmed(false);
+              // Reset agreement steps for next visitor
+              setAgreementSigned(false);
+              setSignature('');
+              setAgreementOpened(false);
+              setAgreementScrolled(false);
+              setAgreementConfirmed(false);
+            }
           };
 
           const handleCheckOut = async () => {
@@ -309,7 +328,7 @@
             const el = agreementBoxRef.current;
             if (!el) return;
 
-            const threshold = 10; // allow slight tolerance
+            const threshold = 10;
             const scrolledToBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
 
             if (scrolledToBottom) {
@@ -536,7 +555,6 @@
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Visitor & Contractor Agreement</h2>
                     
-                    {/* Agreement Text Box (scroll required) */}
                     <div
                       ref={agreementBoxRef}
                       onScroll={handleAgreementScroll}
@@ -573,7 +591,6 @@
                       </div>
                     </div>
 
-                    {/* Scroll status */}
                     {!agreementScrolled ? (
                       <p className="text-xs text-red-600 mb-6">
                         🔽 Please scroll to the bottom of the agreement text above to continue.
@@ -592,8 +609,6 @@
                       </div>
                     ) : (
                       <div className="space-y-4">
-
-                        {/* STEP 1: OPEN PDF */}
                         <div className="p-4 border border-gray-200 rounded-lg bg-white">
                           <p className="text-sm text-gray-700 mb-2 font-medium">
                             Step 1: Open the required agreement document
@@ -617,7 +632,6 @@
                           )}
                         </div>
 
-                        {/* STEP 2: CHECKBOX CONFIRMATION (requires scroll + open) */}
                         <div className="p-4 border border-gray-200 rounded-lg bg-white">
                           <p className="text-sm text-gray-700 mb-2 font-medium">
                             Step 2: Confirm you have read and understand
@@ -643,7 +657,6 @@
                           )}
                         </div>
 
-                        {/* STEP 3: SIGNATURE */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Step 3: Type your full name to sign *
@@ -724,6 +737,13 @@
                         {isLoadingVisitors ? 'Loading...' : 'Refresh'}
                       </button>
                     </div>
+
+                    {/* Debug Info */}
+                    {debugInfo && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+                        <strong>Debug:</strong> {debugInfo}
+                      </div>
+                    )}
                     
                     {isLoadingVisitors ? (
                       <div className="text-center py-12 text-gray-500">
@@ -734,6 +754,7 @@
                       <div className="text-center py-12 text-gray-500">
                         <UserIcon />
                         <p>No visitors currently checked in</p>
+                        <p className="text-xs mt-2">Click the Refresh button or check your Google Sheet for data</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -741,15 +762,15 @@
                           <div key={index} className="p-4 border border-gray-200 rounded-lg">
                             <div className="flex flex-col md:flex-row justify-between items-start">
                               <div className="mb-2 md:mb-0 flex-1">
-                                <h3 className="font-medium text-gray-900">{visitor.name}</h3>
-                                <p className="text-sm text-gray-600">{visitor.company}</p>
-                                <p className="text-sm text-gray-500 mt-1">Host: {visitor.companyHost}</p>
-                                <p className="text-sm text-gray-500">Type: {visitor.visitType}</p>
-                                <p className="text-sm text-gray-500 mt-1">{visitor.purpose}</p>
+                                <h3 className="font-medium text-gray-900">{visitor.name || 'Unknown'}</h3>
+                                <p className="text-sm text-gray-600">{visitor.company || 'Unknown'}</p>
+                                <p className="text-sm text-gray-500 mt-1">Host: {visitor.companyHost || 'Unknown'}</p>
+                                <p className="text-sm text-gray-500">Type: {visitor.visitType || 'Unknown'}</p>
+                                <p className="text-sm text-gray-500 mt-1">{visitor.purpose || 'No purpose specified'}</p>
                               </div>
                               <div className="text-left md:text-right">
-                                <p className="text-sm font-medium text-gray-900">{visitor.checkInTime}</p>
-                                <p className="text-sm text-gray-500">{visitor.date}</p>
+                                <p className="text-sm font-medium text-gray-900">{visitor.checkInTime || 'Unknown'}</p>
+                                <p className="text-sm text-gray-500">{visitor.date || 'Unknown'}</p>
                               </div>
                             </div>
                           </div>
