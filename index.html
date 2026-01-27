@@ -30,7 +30,7 @@
         const COMPANY_NAME = 'West Chicago';
         
         // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyzxhwx8zgRPzqEvNNM3aKFN7MLgxBMm6i5wY3lZ1Doef7OgczUmxggJW-zFaR0Y3wY/exec';
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyOv9qjz8VG1FYPiATV_G04S5L8rhY1ClyrKBVqzp2cYIloTqb536sDDyKywtP-Qen8/exec';
 
         // REQUIRED AGREEMENT DOCUMENT (must be opened before signing)
         const REQUIRED_AGREEMENT_DOC = 'documents/Visitor-Contractor GMP PDF Sign Off Rev 01_7-19-24.pdf';
@@ -121,6 +121,27 @@
           const documents = [
             { name: 'Visitor/Contractor Agreement', file: REQUIRED_AGREEMENT_DOC, category: 'Safety' },
           ];
+
+          // Helper function to format date from various formats
+          const formatDate = (dateStr) => {
+            if (!dateStr) return '';
+            
+            try {
+              // Try to parse the date
+              const date = new Date(dateStr);
+              
+              // Check if valid date
+              if (isNaN(date.getTime())) {
+                return dateStr; // Return original if can't parse
+              }
+              
+              // Format as: Mon Jan 27 2026
+              const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+              return date.toLocaleDateString('en-US', options);
+            } catch (e) {
+              return dateStr; // Return original if error
+            }
+          };
 
           // Fetch visitors using GET with URL params
           const fetchVisitors = async () => {
@@ -218,7 +239,7 @@
 
           const handleSignIn = async () => {
             if (!agreementSigned) {
-              alert('Please sign the agreement before checking in.');
+              alert('Please sign the safety agreement before checking in.');
               setActiveTab('agreement');
               return;
             }
@@ -248,7 +269,7 @@
             
             setIsSaving(false);
             
-            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.\n\nPlease check your Google Sheet.`);
+            alert(`Check-in successful!\n\n${signInData.name} from ${signInData.company} has been logged.`);
             
             setSignInData({
               name: '',
@@ -274,13 +295,8 @@
             
             setIsSaving(true);
             
-            const checkOutDate = new Date().toLocaleDateString();
-            const checkOutTime = new Date().toLocaleTimeString();
-            
             await saveToGoogleSheets({
-              name: checkOutName,
-              date: checkOutDate,
-              checkOutTime: checkOutTime
+              name: checkOutName
             }, 'checkout');
             
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -290,6 +306,11 @@
             alert(`Check-out successful!\n\n${checkOutName} has been logged out.`);
             
             setCheckOutName('');
+            
+            // Refresh visitors list if on that tab
+            if (activeTab === 'visitors') {
+              fetchVisitors();
+            }
           };
 
           const handleAgreementSign = () => {
@@ -573,7 +594,10 @@
                 {activeTab === 'visitors' && (
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900">Current Visitors</h2>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Today's Visitors</h2>
+                        <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
                       <button onClick={fetchVisitors} disabled={isLoadingVisitors} className="px-4 py-2 burgundy-bg text-white rounded burgundy-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <RefreshIcon />{isLoadingVisitors ? 'Loading...' : 'Refresh'}
                       </button>
@@ -591,24 +615,34 @@
                     ) : visitors.length === 0 ? (
                       <div className="text-center py-12 text-gray-500">
                         <UserIcon />
-                        <p>No visitors currently checked in</p>
-                        <p className="text-xs mt-2 text-gray-400">Check-in a visitor first, then refresh this page</p>
+                        <p>No visitors checked in today</p>
+                        <p className="text-xs mt-2 text-gray-400">Visitors will appear here after checking in</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {visitors.map((visitor, index) => (
-                          <div key={index} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                          <div key={index} className={`p-4 border-2 rounded-lg ${visitor.checkOutTime ? 'border-gray-300 bg-gray-50' : 'border-green-300 bg-green-50'}`}>
                             <div className="flex flex-col md:flex-row justify-between items-start">
                               <div className="mb-2 md:mb-0 flex-1">
-                                <h3 className="font-medium text-gray-900 text-lg">{visitor.name}</h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-medium text-gray-900 text-lg">{visitor.name}</h3>
+                                  {visitor.checkOutTime ? (
+                                    <span className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-700">Checked Out</span>
+                                  ) : (
+                                    <span className="px-2 py-1 text-xs rounded bg-green-200 text-green-700">Currently On-Site</span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-gray-600 mt-1">{visitor.company}</p>
                                 <p className="text-sm text-gray-500">Host: {visitor.companyHost}</p>
                                 <p className="text-sm text-gray-500">Type: {visitor.visitType}</p>
                                 {visitor.purpose && <p className="text-sm text-gray-500 mt-2 italic">{visitor.purpose}</p>}
                               </div>
                               <div className="text-left md:text-right">
-                                <p className="text-sm font-medium burgundy-text">{visitor.checkInTime}</p>
-                                <p className="text-sm text-gray-500">{visitor.date}</p>
+                                <p className="text-sm font-medium burgundy-text">Check-In: {visitor.checkInTime}</p>
+                                {visitor.checkOutTime && (
+                                  <p className="text-sm font-medium text-gray-600">Check-Out: {visitor.checkOutTime}</p>
+                                )}
+                                <p className="text-sm text-gray-500 mt-1">{formatDate(visitor.date)}</p>
                               </div>
                             </div>
                           </div>
